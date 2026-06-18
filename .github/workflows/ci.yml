@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, staging, dev]
+  pull_request:
+    branches: [main, staging]
+
+jobs:
+  # ─── Job 1 : Qualité du code ──────────────────────────────────────────────
+  quality:
+    name: Qualité (TypeScript · ESLint · Prisma)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: TypeScript — vérification des types
+        run: npx tsc --noEmit
+
+      - name: ESLint — analyse statique
+        run: npm run lint
+
+      - name: Prisma — validation du schéma
+        run: npx prisma validate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
+      - name: Audit de sécurité (vulnérabilités critiques)
+        run: npm audit --audit-level=critical
+        # continue-on-error: true — décommenter si un paquet tiers génère un faux-positif connu
+
+  # ─── Job 2 : Vérification du build ───────────────────────────────────────
+  build:
+    name: Build Next.js
+    runs-on: ubuntu-latest
+    needs: quality
+
+    env:
+      # Valeurs fictives pour le build CI — aucune connexion réelle établie.
+      # next build ne requiert pas de DB : les Server Components et Actions
+      # ne s'exécutent qu'à la demande (pas au build time).
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      NEXTAUTH_SECRET: ci-build-secret-for-verification-only-32chars
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: "true"
+      # Seule variable NEXT_PUBLIC_ embarquée au build time
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: BCIPlaceholderVapidPublicKeyForBuildVerification00
+      AWS_ACCESS_KEY_ID: AKIACI00000000000000
+      AWS_SECRET_ACCESS_KEY: "0000000000000000000000000000000000000000"
+      AWS_REGION: eu-west-3
+      AWS_S3_BUCKET_NAME: ci-bucket
+      RESEND_API_KEY: re_00000000000000000000000000000000
+      CRON_SECRET: ci-cron-secret
+      VAPID_PUBLIC_KEY: BCIPlaceholderVapidPublicKeyForBuildVerification00
+      VAPID_PRIVATE_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      VAPID_SUBJECT: mailto:ci@facam-stairway.com
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer les dépendances (déclenche prisma generate via postinstall)
+        run: npm ci
+
+      - name: Build Next.js
+        # On utilise "npx next build" et non "npm run build" pour éviter
+        # que "prisma migrate deploy" tourne en CI contre la DB de production.
+        run: npx next build

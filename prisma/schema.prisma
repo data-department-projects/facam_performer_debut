@@ -1,0 +1,562 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  ADMIN
+  MANAGER
+  COLLABORATOR
+}
+
+enum NotificationConsent {
+  NOT_ASKED
+  ACCEPTED
+  DECLINED
+}
+
+enum ProjectCategory {
+  RESEARCH_DEVELOPMENT
+  INFRASTRUCTURE
+  CLIENT
+  INTERNAL_TRANSFORMATION
+  MARKETING
+  OTHER
+}
+
+enum StrategicPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL_REGULATORY
+}
+
+enum ProjectStatus {
+  PENDING
+  INITIATED
+  IN_PROGRESS
+  PAUSED
+  DELIVERED
+  CANCELLED
+}
+
+enum BeneficiaryType {
+  INTERNAL
+  EXTERNAL
+}
+
+enum CommitteeFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  AD_HOC
+}
+
+enum MemberType {
+  PARTICIPANT
+  GUEST
+}
+
+enum PlannedDay {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+}
+
+enum TaskStatus {
+  STARTED
+  IN_PROGRESS
+  DONE
+  NOT_DONE
+}
+
+enum WeekPlannerStatus {
+  DRAFT
+  SUBMITTED
+  VALIDATED
+}
+
+enum ObjectiveType {
+  PERFORMANCE
+  SKILLS_DEVELOPMENT
+}
+
+enum ObjectiveFrequency {
+  ANNUAL
+  QUARTERLY
+  MONTHLY
+}
+
+enum KeyResultStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  DONE
+}
+
+enum AttachmentRelatedType {
+  PROJECT_TASK
+  WEEK_PLANNER_TASK
+  COMMITTEE_ACTION
+  KEY_RESULT
+}
+
+enum BugReportStatus {
+  OPEN
+  RESOLVED
+}
+
+enum CommitteeActionStatus {
+  PENDING
+  DONE
+}
+
+// ============================================================
+// ORGANISATION
+// ============================================================
+
+model Department {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subDepartments       SubDepartment[]
+  users                User[]
+  committeeLinks       CommitteeDepartment[]
+  departmentObjectives DepartmentObjective[]
+  projects             Project[]             @relation("BeneficiaryDepartment")
+}
+
+model SubDepartment {
+  id           String   @id @default(uuid())
+  name         String
+  departmentId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department Department @relation(fields: [departmentId], references: [id])
+  teams      Team[]
+
+  @@index([departmentId])
+}
+
+model Team {
+  id              String   @id @default(uuid())
+  name            String
+  subDepartmentId String
+  managerId       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  subDepartment SubDepartment @relation(fields: [subDepartmentId], references: [id])
+  manager       User          @relation("TeamManager", fields: [managerId], references: [id])
+  members       User[]        @relation("TeamMembers")
+
+  @@index([subDepartmentId])
+  @@index([managerId])
+}
+
+// ============================================================
+// USERS & AUTH
+// ============================================================
+
+model User {
+  id                     String              @id @default(uuid())
+  fullName               String
+  email                  String              @unique
+  passwordHash           String
+  role                   Role
+  departmentId           String
+  teamId                 String?
+  isActive               Boolean             @default(true)
+  notificationConsent    NotificationConsent @default(NOT_ASKED)
+  notificationConsentAt  DateTime?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  department              Department          @relation(fields: [departmentId], references: [id])
+  team                    Team?               @relation("TeamMembers", fields: [teamId], references: [id])
+  managedTeams            Team[]              @relation("TeamManager")
+  passwordResetOtps       PasswordResetOtp[]
+  pushSubscriptions       PushSubscription[]
+  sponsoredProjects       Project[]           @relation("ProjectSponsor")
+  managedProjects         Project[]           @relation("ProjectManager")
+  confirmedProjects       Project[]           @relation("ProjectConfirmer")
+  projectMemberships      ProjectTeamMember[]
+  ganttTasks              GanttTask[]
+  managedCommittees       Committee[]
+  committeeMemberships    CommitteeMember[]
+  assignedActions         CommitteeAction[]
+  weekPlanners            WeekPlanner[]
+  validatedWeekPlanners   WeekPlanner[]       @relation("WeekPlannerValidator")
+  timeEntries             TimeEntry[]
+  objectives              Objective[]
+  bugReports              BugReport[]
+  attachments             Attachment[]
+
+  @@index([departmentId])
+  @@index([teamId])
+}
+
+model PasswordResetOtp {
+  id        String    @id @default(uuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  p256dhKey String
+  authKey   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============================================================
+// PROJETS & GANTT
+// ============================================================
+
+model Project {
+  id                       String          @id @default(uuid())
+  code                     String          @unique
+  name                     String
+  description              String?
+  category                 ProjectCategory
+  strategicPriority        StrategicPriority
+  currentStatus            ProjectStatus   @default(PENDING)
+  sponsorUserId            String
+  projectManagerId         String
+  beneficiaryType          BeneficiaryType
+  beneficiaryDepartmentId  String?
+  beneficiaryExternalName  String?
+  estimatedStartDate       DateTime
+  actualStartDate          DateTime?
+  targetEndDate            DateTime
+  actualEndDate            DateTime?
+  initialBudget            Decimal         @default(0)
+  consumedBudget           Decimal         @default(0)
+  estimatedHrCostDays      Decimal         @default(0)
+  externalExpensesPlanned  Decimal         @default(0)
+  scopeIncluded            String?
+  scopeExcluded            String?
+  expectedDeliverables     String[]
+  successCriteria          String[]
+  documentationLinks       String[]
+  isConfirmed              Boolean         @default(false)
+  confirmedById            String?
+  confirmedAt              DateTime?
+  confirmationNote         String?
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+
+  sponsor              User               @relation("ProjectSponsor", fields: [sponsorUserId], references: [id])
+  projectManager       User               @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  confirmedBy          User?              @relation("ProjectConfirmer", fields: [confirmedById], references: [id])
+  beneficiaryDepartment Department?       @relation("BeneficiaryDepartment", fields: [beneficiaryDepartmentId], references: [id])
+  teamMembers          ProjectTeamMember[]
+  milestones           ProjectMilestone[]
+  ganttTasks           GanttTask[]
+  weekPlannerTasks     WeekPlannerTask[]
+
+  @@index([projectManagerId])
+  @@index([isConfirmed])
+}
+
+model ProjectTeamMember {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  roleLabel String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model ProjectMilestone {
+  id           String    @id @default(uuid())
+  projectId    String
+  title        String
+  targetDate   DateTime
+  achievedDate DateTime?
+  createdAt    DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model GanttTask {
+  id                String   @id @default(uuid())
+  projectId         String
+  title             String
+  startDate         DateTime
+  endDate           DateTime
+  progressPercent   Int      @default(0)
+  dependsOnIds      String[]
+  responsibleUserId String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  responsible User    @relation(fields: [responsibleUserId], references: [id])
+
+  @@index([projectId])
+  @@index([responsibleUserId])
+}
+
+// ============================================================
+// COMITÉS
+// ============================================================
+
+model Committee {
+  id              String             @id @default(uuid())
+  name            String
+  responsibleUserId String
+  objectives      String
+  frequency       CommitteeFrequency
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  responsible       User                  @relation(fields: [responsibleUserId], references: [id])
+  departments       CommitteeDepartment[]
+  members           CommitteeMember[]
+  meetings          CommitteeMeeting[]
+
+  @@index([responsibleUserId])
+}
+
+model CommitteeDepartment {
+  id           String @id @default(uuid())
+  committeeId  String
+  departmentId String
+
+  committee  Committee  @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@unique([committeeId, departmentId])
+  @@index([committeeId])
+}
+
+model CommitteeMember {
+  id          String     @id @default(uuid())
+  committeeId String
+  userId      String
+  memberType  MemberType
+
+  committee Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([committeeId, userId])
+  @@index([committeeId])
+  @@index([userId])
+}
+
+model CommitteeMeeting {
+  id             String    @id @default(uuid())
+  committeeId    String
+  meetingDate    DateTime
+  startDateTime  DateTime
+  endDateTime    DateTime
+  meetingLink    String?
+  reminderSentAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  committee Committee       @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  actions   CommitteeAction[]
+
+  @@index([committeeId])
+  @@index([meetingDate])
+}
+
+model CommitteeAction {
+  id                String                @id @default(uuid())
+  meetingId         String
+  title             String
+  responsibleUserId String
+  dueDate           DateTime
+  status            CommitteeActionStatus @default(PENDING)
+  createdAt         DateTime              @default(now())
+
+  meeting     CommitteeMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  responsible User             @relation(fields: [responsibleUserId], references: [id])
+
+  @@index([meetingId])
+  @@index([responsibleUserId])
+}
+
+// ============================================================
+// WEEK PLANNER
+// ============================================================
+
+model WeekPlanner {
+  id            String            @id @default(uuid())
+  userId        String
+  weekStartDate DateTime
+  weekEndDate   DateTime
+  status        WeekPlannerStatus @default(DRAFT)
+  validatedById String?
+  validatedAt   DateTime?
+  createdAt     DateTime          @default(now())
+
+  user        User              @relation(fields: [userId], references: [id])
+  validatedBy User?             @relation("WeekPlannerValidator", fields: [validatedById], references: [id])
+  tasks       WeekPlannerTask[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model WeekPlannerTask {
+  id            String     @id @default(uuid())
+  weekPlannerId String
+  projectId     String?
+  title         String
+  plannedDay    PlannedDay
+  status        TaskStatus @default(STARTED)
+  comment       String?
+  isLocked      Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  weekPlanner WeekPlanner  @relation(fields: [weekPlannerId], references: [id], onDelete: Cascade)
+  project     Project?     @relation(fields: [projectId], references: [id])
+  timeEntries TimeEntry[]
+
+  @@index([weekPlannerId])
+  @@index([projectId])
+}
+
+model TimeEntry {
+  id                String   @id @default(uuid())
+  userId            String
+  weekPlannerTaskId String?
+  date              DateTime
+  hoursSpent        Decimal
+  activityLabel     String
+  createdAt         DateTime @default(now())
+
+  user            User             @relation(fields: [userId], references: [id])
+  weekPlannerTask WeekPlannerTask? @relation(fields: [weekPlannerTaskId], references: [id])
+
+  @@index([userId])
+  @@index([weekPlannerTaskId])
+}
+
+// ============================================================
+// OBJECTIFS
+// ============================================================
+
+model Objective {
+  id          String             @id @default(uuid())
+  userId      String
+  name        String
+  description String
+  type        ObjectiveType
+  risks       String[]
+  frequency   ObjectiveFrequency
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id])
+  keyResults KeyResult[]
+
+  @@index([userId])
+}
+
+model KeyResult {
+  id            String          @id @default(uuid())
+  objectiveId   String
+  description   String
+  targetValue   Decimal?
+  currentValue  Decimal?
+  evidenceNote  String?
+  dueDate       DateTime?
+  status        KeyResultStatus @default(NOT_STARTED)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  objective   Objective    @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+  attachments Attachment[]
+
+  @@index([objectiveId])
+}
+
+model DepartmentObjective {
+  id                       String             @id @default(uuid())
+  departmentId             String
+  title                    String
+  frequency                ObjectiveFrequency
+  aggregatedProgressPercent Int               @default(0)
+  periodStart              DateTime
+  periodEnd                DateTime
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@index([departmentId])
+}
+
+// ============================================================
+// ATTACHEMENTS & BUGS
+// ============================================================
+
+model Attachment {
+  id            String                @id @default(uuid())
+  s3Key         String
+  fileName      String
+  contentType   String
+  relatedType   AttachmentRelatedType
+  relatedId     String
+  uploadedById  String
+  keyResultId   String?
+  createdAt     DateTime              @default(now())
+
+  uploadedBy User       @relation(fields: [uploadedById], references: [id])
+  keyResult  KeyResult? @relation(fields: [keyResultId], references: [id])
+
+  @@index([relatedType, relatedId])
+  @@index([uploadedById])
+}
+
+model BugReport {
+  id          String          @id @default(uuid())
+  userId      String
+  description String
+  status      BugReportStatus @default(OPEN)
+  createdAt   DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}

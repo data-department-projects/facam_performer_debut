@@ -1,0 +1,161 @@
+@import "tailwindcss";
+@source not "../node_modules";
+@source not "../context";
+
+@theme inline {
+  /* === Charte FACAM STAIRWAY — 5 couleurs intouchables === */
+  --color-facamBlue: #001b61;
+  --color-facamDark: #000d32;
+  --color-facamYellow: #ffae03;
+  --color-facamWhite: #ffffff;
+  --color-facamBlack: #000000;
+
+  /* === Extensions FACAM PERFORMER === */
+  --color-facamBlueMid: #002a6e;
+  --color-facamBlueTint: #f0f4fa;
+
+  /* Statuts sémantiques */
+  --color-success: #16a34a;
+  --color-successLight: #dcfce7;
+  --color-warning: #92600a;
+  --color-warningLight: rgba(255, 174, 3, 0.12);
+  --color-error: #b91c1c;
+  --color-errorLight: #fee2e2;
+  --color-info: #001b61;
+  --color-infoLight: #f0f4fa;
+
+  /* Échelle de gris */
+  --color-gray50: #f9fafb;
+  --color-gray100: #f3f4f6;
+  --color-gray200: #e5e7eb;
+  --color-gray300: #d1d5db;
+  --color-gray400: #9ca3af;
+  --color-gray500: #6b7280;
+  --color-gray600: #4b5563;
+  --color-gray700: #374151;
+  --color-gray800: #1f2937;
+  --color-gray900: #111827;
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Graphiques */
+  --color-chartPrimary: #001b61;
+  --color-chartSecondary: #002a6e;
+  --color-chartAccent: #ffae03;
+  --color-chartGrid: #e5e7eb;
+
+  /* === Mapping shadcn/ui → tokens FACAM === */
+  --color-background: #ffffff;
+  --color-foreground: #000000;
+  --color-primary: #001b61;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f3f4f6;
+  --color-secondary-foreground: #000d32;
+  --color-destructive: #b91c1c;
+  --color-destructive-foreground: #ffffff;
+  --color-muted: #f3f4f6;
+  --color-muted-foreground: #6b7280;
+  --color-accent: #f0f4fa;
+  --color-accent-foreground: #000d32;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #000000;
+  --color-card: #ffffff;
+  --color-card-foreground: #000000;
+  --color-border: #e5e7eb;
+  --color-input: #e5e7eb;
+  --color-ring: #001b61;
+
+  /* Police */
+  --font-montserrat: var(--font-montserrat);
+}
+
+:root {
+  --font-montserrat: "Montserrat", sans-serif;
+}
+
+body {
+  background-color: #f0f4fa;
+  color: #000000;
+  font-family: var(--font-montserrat);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+/* === Classes utilitaires globales === */
+
+.btn-primary {
+  background-color: #001b61;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-primary:hover {
+  background-color: #000d32;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #000d32;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #f3f4f6;
+}
+
+.btn-accent {
+  background-color: #ffae03;
+  color: #000d32;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.btn-accent:hover {
+  filter: brightness(1.05);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: #6b7280;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-ghost:hover {
+  background-color: #f3f4f6;
+}
