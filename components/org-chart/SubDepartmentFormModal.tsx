@@ -22,7 +22,6 @@ export function SubDepartmentFormModal({ open, departmentId, subDept, onClose }:
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(subDept?.name ?? "");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(null);
     }
   }, [open, subDept]);

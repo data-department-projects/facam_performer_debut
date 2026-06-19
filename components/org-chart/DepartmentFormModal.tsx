@@ -21,7 +21,6 @@ export function DepartmentFormModal({ open, dept, onClose }: Props) {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(dept?.name ?? "");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(null);
     }
   }, [open, dept]);

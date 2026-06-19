@@ -131,6 +131,7 @@ export function ProjectForm({ users, departments }: Props) {
     remove: removeLink,
   } = useFieldArray({ control, name: "documentationLinks" });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const beneficiaryType = watch("beneficiaryType");
 
   const onSubmit = async (data: ProjectInput) => {

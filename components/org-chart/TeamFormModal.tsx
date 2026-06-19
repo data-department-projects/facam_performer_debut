@@ -30,9 +30,7 @@ export function TeamFormModal({ open, subDepartmentId, team, allUsers, onClose }
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(team?.name ?? "");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setManagerId(team?.manager?.id ?? "");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(null);
     }
   }, [open, team]);
