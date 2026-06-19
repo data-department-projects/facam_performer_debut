@@ -1,0 +1,76 @@
+name: CD — FACAM PERFORMER
+
+on:
+  workflow_run:
+    workflows: ["CI — FACAM PERFORMER"]
+    types: [completed]
+    branches: [main, staging]
+
+jobs:
+  deploy:
+    name: Migrate + Deploy (${{ github.event.workflow_run.head_branch }})
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    timeout-minutes: 15
+
+    environment:
+      name: ${{ github.event.workflow_run.head_branch == 'main' && 'production' || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Snapshot RDS avant migration — rollback possible en 5-10 min via AWS Console
+      - name: Snapshot RDS pré-migration
+        if: github.event.workflow_run.head_branch == 'main'
+        run: |
+          aws rds create-db-snapshot \
+            --db-instance-identifier facam-performer-prod \
+            --db-snapshot-identifier "pre-deploy-$(date +%Y%m%d%H%M%S)"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: eu-west-3
+
+      - name: Prisma migrate deploy
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Deploy to Vercel
+        id: deploy
+        run: |
+          IS_PROD="${{ github.event.workflow_run.head_branch == 'main' }}"
+          ENV_FLAG=$([ "$IS_PROD" = "true" ] && echo "production" || echo "preview")
+
+          npx vercel pull --yes --environment="$ENV_FLAG" --token=${{ secrets.VERCEL_TOKEN }}
+          npx vercel build $([ "$IS_PROD" = "true" ] && echo "--prod" || echo "") --token=${{ secrets.VERCEL_TOKEN }}
+          URL=$(npx vercel deploy --prebuilt $([ "$IS_PROD" = "true" ] && echo "--prod" || echo "") --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$URL" >> $GITHUB_OUTPUT
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Smoke test — /api/health
+        run: |
+          DEPLOY_URL="${{ steps.deploy.outputs.url }}"
+          for i in 1 2 3; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOY_URL/api/health")
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed (attempt $i): $STATUS"
+              exit 0
+            fi
+            echo "Attempt $i failed with status $STATUS, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 3 attempts"
+          exit 1

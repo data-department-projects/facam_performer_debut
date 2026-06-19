@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 4 — Projets, Planification (Gantt) & Comités (features 11–18)
-**Last completed:** Feature 14 — Comités — UI complète (2026-06-19) — zéro erreur TypeScript, zéro warning ESLint
-**Next:** Feature 15 — Comités — Logique
+**Last completed:** Feature 15 — Comités — Logique (2026-06-19) — 4 Server Actions, Zod schemas, pages câblées Prisma, toggle statut actions
+**Next:** Feature 16 — Vue Collaborateur — Mes Projets & Mise à jour de mes tâches
 
 ---
 
@@ -39,7 +39,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - [x] 12 Création de projet & planning Gantt — Logique (`actions/projects.ts`, `actions/ganttTasks.ts`, `lib/gantt-import.ts`, `components/projects/MilestoneFormModal.tsx` — code PRJ-{année}-{seq}, import Excel, jalons depuis vue détail)
 - [x] 13 Confirmation des projets — Logique (`actions/projectValidation.ts` — confirmProject + addConfirmationNote, `components/projects/ProjectConfirmationPanel.tsx`, liste projets câblée DB avec filtrage par rôle Admin/Manager)
 - [x] 14 Comités — UI complète (`app/committees/`, `components/committees/` — 3 comités mock, liste cards + détail sections verticales + réunions expandables + actions + modales)
-- [ ] 15 Comités — Logique
+- [x] 15 Comités — Logique (`actions/committees.ts`, `lib/schemas/committee.ts` — createCommittee nested Prisma, planMeeting, createCommitteeAction, updateCommitteeActionStatus, pages câblées DB, toggle statut dans CommitteeActionsList)
 - [ ] 16 Vue Collaborateur — Mes Projets & Mise à jour de mes tâches
 - [ ] 17 Vue Collaborateur — Mes Comités
 - [ ] 18 Rappels de Réunion — Email ou Notification Push

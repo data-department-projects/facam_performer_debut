@@ -3,10 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import {
-  MOCK_USERS_FOR_FORM,
-  MOCK_DEPARTMENTS_FOR_FORM,
-} from "@/app/committees/_mock-data";
+import { createCommittee } from "@/actions/committees";
 
 type Frequency = "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "AD_HOC";
 
@@ -18,7 +15,12 @@ const FREQUENCY_OPTIONS: { value: Frequency; label: string }[] = [
   { value: "AD_HOC", label: "Ponctuel" },
 ];
 
-export function CommitteeForm() {
+type Props = {
+  departments: { id: string; name: string }[];
+  users: { id: string; fullName: string }[];
+};
+
+export function CommitteeForm({ departments, users }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -50,11 +52,23 @@ export function CommitteeForm() {
       return;
     }
 
-    // Mock — feature 15 câble la vraie Server Action
-    startTransition(() => {
-      setTimeout(() => {
-        router.push("/committees");
-      }, 600);
+    startTransition(async () => {
+      const result = await createCommittee({
+        name: name.trim(),
+        responsibleUserId: responsibleId,
+        objectives: objectives.trim(),
+        frequency,
+        departmentIds: Array.from(selectedDepts),
+        participantIds: Array.from(selectedParticipants),
+        guestIds: Array.from(selectedGuests),
+      });
+
+      if (!result.success) {
+        setError(result.error ?? "Une erreur est survenue.");
+        return;
+      }
+
+      router.push("/committees");
     });
   }
 
@@ -98,9 +112,9 @@ export function CommitteeForm() {
                 className="rounded-md border border-gray300 bg-facamWhite px-3 py-2 text-sm text-facamBlack focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
               >
                 <option value="">Sélectionner…</option>
-                {MOCK_USERS_FOR_FORM.map((u) => (
+                {users.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.name}
+                    {u.fullName}
                   </option>
                 ))}
               </select>
@@ -136,7 +150,7 @@ export function CommitteeForm() {
               value={objectives}
               onChange={(e) => setObjectives(e.target.value)}
               placeholder="Décrire la mission et les objectifs de ce comité…"
-              className="rounded-md border border-gray300 bg-facamWhite px-3 py-2 text-sm text-facamBlack placeholder:text-gray400 focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20 resize-none"
+              className="resize-none rounded-md border border-gray300 bg-facamWhite px-3 py-2 text-sm text-facamBlack placeholder:text-gray400 focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
             />
           </div>
         </div>
@@ -148,18 +162,18 @@ export function CommitteeForm() {
             <span className="font-normal normal-case text-error">*</span>
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {MOCK_DEPARTMENTS_FOR_FORM.map((dept) => (
+            {departments.map((dept) => (
               <label
-                key={dept}
+                key={dept.id}
                 className="flex cursor-pointer items-center gap-2 rounded-md border border-gray200 px-3 py-2 hover:bg-gray50 transition-colors"
               >
                 <input
                   type="checkbox"
-                  checked={selectedDepts.has(dept)}
-                  onChange={() => setSelectedDepts(toggleSet(selectedDepts, dept))}
+                  checked={selectedDepts.has(dept.id)}
+                  onChange={() => setSelectedDepts(toggleSet(selectedDepts, dept.id))}
                   className="accent-facamBlue"
                 />
-                <span className="text-xs text-facamBlack">{dept}</span>
+                <span className="text-xs text-facamBlack">{dept.name}</span>
               </label>
             ))}
           </div>
@@ -170,11 +184,9 @@ export function CommitteeForm() {
           <p className="text-xs font-semibold uppercase tracking-widest text-gray500">
             Participants
           </p>
-          <p className="text-xs text-gray400">
-            Membres actifs qui participent aux décisions.
-          </p>
+          <p className="text-xs text-gray400">Membres actifs qui participent aux décisions.</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {MOCK_USERS_FOR_FORM.map((user) => (
+            {users.map((user) => (
               <label
                 key={user.id}
                 className="flex cursor-pointer items-center gap-2 rounded-md border border-gray200 px-3 py-2 hover:bg-gray50 transition-colors"
@@ -187,7 +199,7 @@ export function CommitteeForm() {
                   }
                   className="accent-facamBlue"
                 />
-                <span className="text-xs text-facamBlack">{user.name}</span>
+                <span className="text-xs text-facamBlack">{user.fullName}</span>
               </label>
             ))}
           </div>
@@ -196,11 +208,9 @@ export function CommitteeForm() {
         {/* Invités */}
         <div className="flex flex-col gap-3 border-t border-gray200 pt-5">
           <p className="text-xs font-semibold uppercase tracking-widest text-gray500">Invités</p>
-          <p className="text-xs text-gray400">
-            Présents en observateurs, sans droit de décision.
-          </p>
+          <p className="text-xs text-gray400">Présents en observateurs, sans droit de décision.</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {MOCK_USERS_FOR_FORM.map((user) => (
+            {users.map((user) => (
               <label
                 key={user.id}
                 className="flex cursor-pointer items-center gap-2 rounded-md border border-gray200 px-3 py-2 hover:bg-gray50 transition-colors"
@@ -211,7 +221,7 @@ export function CommitteeForm() {
                   onChange={() => setSelectedGuests(toggleSet(selectedGuests, user.id))}
                   className="accent-facamBlue"
                 />
-                <span className="text-xs text-facamBlack">{user.name}</span>
+                <span className="text-xs text-facamBlack">{user.fullName}</span>
               </label>
             ))}
           </div>

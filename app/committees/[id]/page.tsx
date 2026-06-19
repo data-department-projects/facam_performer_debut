@@ -2,8 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { CommitteeDetail } from "@/components/committees/CommitteeDetail";
-import { MOCK_COMMITTEES } from "@/app/committees/_mock-data";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { committeeInclude, toMockCommittee } from "@/app/committees/_db-helpers";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -17,8 +18,14 @@ export default async function CommitteeDetailPage({ params }: Props) {
   const role = session.user.role;
   const canManage = role === "ADMIN" || role === "MANAGER";
 
-  const committee = MOCK_COMMITTEES.find((c) => c.id === id);
-  if (!committee) notFound();
+  const dbCommittee = await prisma.committee.findUnique({
+    where: { id },
+    include: committeeInclude,
+  });
+
+  if (!dbCommittee) notFound();
+
+  const committee = toMockCommittee(dbCommittee);
 
   return (
     <AppShell pageTitle={committee.name}>

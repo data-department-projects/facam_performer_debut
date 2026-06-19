@@ -1,34 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { X, Loader2 } from "lucide-react";
+import { planMeeting } from "@/actions/committees";
 
 type Props = {
   open: boolean;
+  committeeId: string;
   onClose: () => void;
 };
 
-export function CommitteeMeetingFormModal({ open, onClose }: Props) {
+export function CommitteeMeetingFormModal({ open, committeeId, onClose }: Props) {
   const [meetingDate, setMeetingDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [meetingLink, setMeetingLink] = useState("");
-  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   if (!open) return null;
 
+  function handleClose() {
+    setMeetingDate("");
+    setStartTime("");
+    setEndTime("");
+    setMeetingLink("");
+    setError(null);
+    onClose();
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setIsPending(true);
-    // Mock — feature 15 câble la vraie Server Action
-    setTimeout(() => {
-      setIsPending(false);
-      setMeetingDate("");
-      setStartTime("");
-      setEndTime("");
-      setMeetingLink("");
-      onClose();
-    }, 600);
+    setError(null);
+
+    startTransition(async () => {
+      const result = await planMeeting({
+        committeeId,
+        meetingDate,
+        startTime,
+        endTime,
+        meetingLink: meetingLink || undefined,
+      });
+
+      if (!result.success) {
+        setError(result.error ?? "Une erreur est survenue.");
+        return;
+      }
+
+      handleClose();
+    });
   }
 
   return (
@@ -36,7 +56,7 @@ export function CommitteeMeetingFormModal({ open, onClose }: Props) {
       <div className="w-full max-w-md rounded-2xl bg-facamWhite p-6 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
           <h3 className="text-base font-semibold text-facamDark">Planifier une réunion</h3>
-          <button onClick={onClose} className="text-gray400 hover:text-facamDark">
+          <button onClick={handleClose} className="text-gray400 hover:text-facamDark">
             <X size={18} />
           </button>
         </div>
@@ -103,10 +123,15 @@ export function CommitteeMeetingFormModal({ open, onClose }: Props) {
             />
           </div>
 
+          {/* Erreur */}
+          {error && (
+            <p className="rounded-md bg-errorLight px-3 py-2 text-sm text-error">{error}</p>
+          )}
+
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="rounded-md border border-gray300 bg-facamWhite px-4 py-2 text-sm font-medium text-facamDark hover:bg-gray50"
             >
               Annuler
