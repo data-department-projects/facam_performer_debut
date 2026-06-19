@@ -194,7 +194,9 @@ type Props = {
 export default async function ProjectDetailPage({ params }: Props) {
   const { id } = await params;
   const session = await auth();
-  const isEditable = session?.user?.role !== "COLLABORATOR";
+  const userRole = session?.user?.role;
+  const isEditable = userRole !== "COLLABORATOR";
+  const isAdmin = userRole === "ADMIN";
 
   // Charger depuis la DB en priorité (projets créés via le formulaire)
   const dbProject = await prisma.project.findUnique({
@@ -203,6 +205,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       sponsor: { select: { fullName: true } },
       projectManager: { select: { fullName: true } },
       beneficiaryDepartment: { select: { name: true } },
+      confirmedBy: { select: { fullName: true } },
       teamMembers: {
         include: { user: { select: { fullName: true } } },
       },
@@ -272,6 +275,9 @@ export default async function ProjectDetailPage({ params }: Props) {
           milestones={milestones}
           projectId={dbProject.id}
           isEditable={isEditable}
+          isAdmin={isAdmin}
+          confirmedAt={dbProject.confirmedAt?.toISOString()}
+          confirmedByName={dbProject.confirmedBy?.fullName}
         />
       </AppShell>
     );
@@ -295,6 +301,7 @@ export default async function ProjectDetailPage({ params }: Props) {
         milestones={mockMilestones}
         projectId={id}
         isEditable={isEditable}
+        isAdmin={isAdmin}
       />
     </AppShell>
   );

@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 4 — Projets, Planification (Gantt) & Comités (features 11–18)
-**Last completed:** Feature 12 — Création de projet & planning Gantt — Logique (2026-06-18) — zéro erreur TypeScript
-**Next:** Feature 13 — Confirmation des projets — Logique (Administrateur principal)
+**Last completed:** Feature 13 — Confirmation des projets — Logique (2026-06-19) — zéro erreur TypeScript
+**Next:** Feature 14 — Comités — UI complète
 
 ---
 
@@ -37,7 +37,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 - [x] 11 Module Projets & Gantt — UI complète (`app/projects/`, `components/projects/`, mock data + Gantt view)
 - [x] 12 Création de projet & planning Gantt — Logique (`actions/projects.ts`, `actions/ganttTasks.ts`, `lib/gantt-import.ts`, `components/projects/MilestoneFormModal.tsx` — code PRJ-{année}-{seq}, import Excel, jalons depuis vue détail)
-- [ ] 13 Confirmation des projets — Logique (Administrateur principal)
+- [x] 13 Confirmation des projets — Logique (`actions/projectValidation.ts` — confirmProject + addConfirmationNote, `components/projects/ProjectConfirmationPanel.tsx`, liste projets câblée DB avec filtrage par rôle Admin/Manager)
 - [ ] 14 Comités — UI complète
 - [ ] 15 Comités — Logique
 - [ ] 16 Vue Collaborateur — Mes Projets & Mise à jour de mes tâches
