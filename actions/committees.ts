@@ -164,22 +164,14 @@ export async function updateCommitteeActionStatus(
   try {
     await requireRole(["ADMIN", "MANAGER"]);
 
-    const action = await prisma.committeeAction.findUnique({
+    const updated = await prisma.committeeAction.update({
       where: { id: actionId },
+      data: { status },
       select: { meeting: { select: { committeeId: true } } },
     });
 
-    if (!action) {
-      return { success: false, error: "Décision introuvable." };
-    }
-
-    await prisma.committeeAction.update({
-      where: { id: actionId },
-      data: { status },
-    });
-
     revalidatePath("/committees");
-    revalidatePath(`/committees/${action.meeting.committeeId}`);
+    revalidatePath(`/committees/${updated.meeting.committeeId}`);
     return { success: true };
   } catch (error) {
     console.error("[actions/committees] updateCommitteeActionStatus", error);
