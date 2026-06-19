@@ -3,6 +3,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ProjectForm } from "@/components/projects/ProjectForm";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export default async function NewProjectPage() {
   const [users, departments] = await Promise.all([
     prisma.user.findMany({

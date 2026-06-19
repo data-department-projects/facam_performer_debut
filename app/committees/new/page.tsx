@@ -5,6 +5,8 @@ import { CommitteeForm } from "@/components/committees/CommitteeForm";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export default async function NewCommitteePage() {
   const session = await auth();
   if (!session?.user) redirect("/login");

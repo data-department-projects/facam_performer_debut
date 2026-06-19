@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { UserForm } from "@/components/admin/UserForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function NewUserPage() {
   const departments = await prisma.department.findMany({
     include: {

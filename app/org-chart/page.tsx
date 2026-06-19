@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { OrgTree } from "@/components/org-chart/OrgTree";
 import type { Role } from "@/app/generated/prisma/client";
 
+export const dynamic = "force-dynamic";
+
 export default async function OrgChartPage() {
   const session = await auth();
   const role = session!.user.role as Role;
