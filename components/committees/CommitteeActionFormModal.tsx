@@ -1,36 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { X, Loader2 } from "lucide-react";
 import type { MockCommitteeMember } from "@/app/committees/_mock-data";
+import { createCommitteeAction } from "@/actions/committees";
 
 type Props = {
   open: boolean;
+  meetingId: string;
   members: MockCommitteeMember[];
   onClose: () => void;
 };
 
-export function CommitteeActionFormModal({ open, members, onClose }: Props) {
+export function CommitteeActionFormModal({ open, meetingId, members, onClose }: Props) {
   const [title, setTitle] = useState("");
   const [responsibleId, setResponsibleId] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState<"PENDING" | "DONE">("PENDING");
-  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   if (!open) return null;
 
+  function handleClose() {
+    setTitle("");
+    setResponsibleId("");
+    setDueDate("");
+    setStatus("PENDING");
+    setError(null);
+    onClose();
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setIsPending(true);
-    // Mock — feature 15 câble la vraie Server Action
-    setTimeout(() => {
-      setIsPending(false);
-      setTitle("");
-      setResponsibleId("");
-      setDueDate("");
-      setStatus("PENDING");
-      onClose();
-    }, 600);
+    setError(null);
+
+    startTransition(async () => {
+      const result = await createCommitteeAction({
+        meetingId,
+        title: title.trim(),
+        responsibleUserId: responsibleId,
+        dueDate,
+        status,
+      });
+
+      if (!result.success) {
+        setError(result.error ?? "Une erreur est survenue.");
+        return;
+      }
+
+      handleClose();
+    });
   }
 
   return (
@@ -38,7 +58,7 @@ export function CommitteeActionFormModal({ open, members, onClose }: Props) {
       <div className="w-full max-w-md rounded-2xl bg-facamWhite p-6 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
           <h3 className="text-base font-semibold text-facamDark">Ajouter une décision</h3>
-          <button onClick={onClose} className="text-gray400 hover:text-facamDark">
+          <button onClick={handleClose} className="text-gray400 hover:text-facamDark">
             <X size={18} />
           </button>
         </div>
@@ -113,10 +133,15 @@ export function CommitteeActionFormModal({ open, members, onClose }: Props) {
             </select>
           </div>
 
+          {/* Erreur */}
+          {error && (
+            <p className="rounded-md bg-errorLight px-3 py-2 text-sm text-error">{error}</p>
+          )}
+
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="rounded-md border border-gray300 bg-facamWhite px-4 py-2 text-sm font-medium text-facamDark hover:bg-gray50"
             >
               Annuler

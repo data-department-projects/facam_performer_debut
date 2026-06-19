@@ -1,13 +1,26 @@
 "use client";
 
-import { CheckCircle2, Clock } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle2, Clock, Loader2 } from "lucide-react";
 import type { MockAction } from "@/app/committees/_mock-data";
+import { updateCommitteeActionStatus } from "@/actions/committees";
+import type { CommitteeActionStatus } from "@/app/generated/prisma/client";
 
 type Props = {
   actions: MockAction[];
+  canManage: boolean;
 };
 
-export function CommitteeActionsList({ actions }: Props) {
+export function CommitteeActionsList({ actions, canManage }: Props) {
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  async function handleToggle(actionId: string, current: "PENDING" | "DONE") {
+    setPendingId(actionId);
+    const next: CommitteeActionStatus = current === "DONE" ? "PENDING" : "DONE";
+    await updateCommitteeActionStatus(actionId, next);
+    setPendingId(null);
+  }
+
   if (actions.length === 0) {
     return (
       <p className="py-3 text-center text-xs text-gray400">
@@ -33,9 +46,7 @@ export function CommitteeActionsList({ actions }: Props) {
           <div className="min-w-0 flex-1">
             <p
               className={`text-sm font-medium ${
-                action.status === "DONE"
-                  ? "text-gray500 line-through"
-                  : "text-facamBlack"
+                action.status === "DONE" ? "text-gray500 line-through" : "text-facamBlack"
               }`}
             >
               {action.title}
@@ -50,16 +61,31 @@ export function CommitteeActionsList({ actions }: Props) {
             </p>
           </div>
 
-          {/* Badge statut */}
-          <span
-            className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-              action.status === "DONE"
-                ? "bg-successLight text-success"
-                : "bg-warningLight text-warning"
-            }`}
-          >
-            {action.status === "DONE" ? "Réalisée" : "En attente"}
-          </span>
+          {/* Badge / Toggle statut */}
+          {canManage ? (
+            <button
+              onClick={() => handleToggle(action.id, action.status)}
+              disabled={pendingId === action.id}
+              className={`inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-75 disabled:opacity-50 ${
+                action.status === "DONE"
+                  ? "bg-successLight text-success"
+                  : "bg-warningLight text-warning"
+              }`}
+            >
+              {pendingId === action.id && <Loader2 size={10} className="animate-spin" />}
+              {action.status === "DONE" ? "Réalisée" : "En attente"}
+            </button>
+          ) : (
+            <span
+              className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                action.status === "DONE"
+                  ? "bg-successLight text-success"
+                  : "bg-warningLight text-warning"
+              }`}
+            >
+              {action.status === "DONE" ? "Réalisée" : "En attente"}
+            </span>
+          )}
         </div>
       ))}
     </div>
