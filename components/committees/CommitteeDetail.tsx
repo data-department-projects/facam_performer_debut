@@ -211,10 +211,12 @@ export function CommitteeDetail({ committee, canManage }: Props) {
       {/* Modales */}
       <CommitteeMeetingFormModal
         open={meetingModalOpen}
+        committeeId={committee.id}
         onClose={() => setMeetingModalOpen(false)}
       />
       <CommitteeActionFormModal
         open={actionModal.open}
+        meetingId={actionModal.meetingId ?? ""}
         members={allMembers}
         onClose={() => setActionModal({ open: false, meetingId: null })}
       />

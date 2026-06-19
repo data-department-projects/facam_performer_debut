@@ -1,0 +1,38 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    groups:
+      prisma:
+        patterns:
+          - "prisma"
+          - "@prisma/*"
+      aws:
+        patterns:
+          - "@aws-sdk/*"
+      nextjs:
+        patterns:
+          - "next"
+          - "next-auth"
+          - "react"
+          - "react-dom"
+    ignore:
+      - dependency-name: "gantt-task-react"
+        # Pinné à 0.3.9 — conflit peer dep React 18, mise à niveau manuelle requise
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: "Europe/Paris"

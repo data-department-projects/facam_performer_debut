@@ -87,7 +87,7 @@ export function CommitteeMeetingCard({ meeting, canManage, onAddAction }: Props)
       {/* Corps expansible — actions */}
       {expanded && (
         <div className="border-t border-gray200 px-5 pb-4 pt-3">
-          <CommitteeActionsList actions={meeting.actions} />
+          <CommitteeActionsList actions={meeting.actions} canManage={canManage} />
 
           {canManage && (
             <button

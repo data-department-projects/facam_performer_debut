@@ -2,14 +2,22 @@ name: Migrate DB
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environnement cible"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
 
 jobs:
   migrate:
-    name: Apply Prisma migrations
+    name: Apply Prisma migrations (${{ inputs.environment }})
     runs-on: ubuntu-latest
-
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
 
     steps:
       - uses: actions/checkout@v4
@@ -24,3 +32,5 @@ jobs:
 
       - name: Deploy migrations
         run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

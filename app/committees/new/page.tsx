@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { CommitteeForm } from "@/components/committees/CommitteeForm";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export default async function NewCommitteePage() {
   const session = await auth();
@@ -10,6 +11,15 @@ export default async function NewCommitteePage() {
 
   const role = session.user.role;
   if (role === "COLLABORATOR") redirect("/committees");
+
+  const [departments, users] = await Promise.all([
+    prisma.department.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.user.findMany({
+      where: { isActive: true },
+      orderBy: { fullName: "asc" },
+      select: { id: true, fullName: true },
+    }),
+  ]);
 
   return (
     <AppShell pageTitle="Nouveau comité">
@@ -22,7 +32,7 @@ export default async function NewCommitteePage() {
             ← Retour aux comités
           </Link>
         </div>
-        <CommitteeForm />
+        <CommitteeForm departments={departments} users={users} />
       </div>
     </AppShell>
   );

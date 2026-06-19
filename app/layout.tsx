@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -22,6 +24,8 @@ export default function RootLayout({
     <html lang="fr" className={`${montserrat.variable} h-full`}>
       <body className="min-h-full bg-facamBlueTint font-montserrat antialiased">
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
