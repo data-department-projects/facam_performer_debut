@@ -1,4 +1,4 @@
-name: CI
+name: CI — FACAM PERFORMER
 
 on:
   push:
@@ -6,11 +6,18 @@ on:
   pull_request:
     branches: [main, staging]
 
+# Annule le run précédent sur la même branche dès qu'un nouveau push arrive.
+# Évite de brûler des minutes CI sur du code déjà dépassé.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ─── Job 1 : Qualité du code ──────────────────────────────────────────────
   quality:
-    name: Qualité (TypeScript · ESLint · Prisma)
+    name: Qualité (TypeScript · ESLint · Prisma · Sécurité)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +28,7 @@ jobs:
           cache: npm
 
       - name: Installer les dépendances
+        # .npmrc contient legacy-peer-deps=true pour gantt-task-react (peer React 18)
         run: npm ci
 
       - name: TypeScript — vérification des types
@@ -36,23 +44,24 @@ jobs:
 
       - name: Audit de sécurité (vulnérabilités critiques)
         run: npm audit --audit-level=critical
-        # continue-on-error: true — décommenter si un paquet tiers génère un faux-positif connu
+        # Décommenter si un paquet tiers génère un faux-positif connu et documenté :
+        # continue-on-error: true
 
-  # ─── Job 2 : Vérification du build ───────────────────────────────────────
+  # ─── Job 2 : Build de vérification ───────────────────────────────────────
+  # Ne se déclenche qu'après que le job quality ait réussi.
   build:
     name: Build Next.js
     runs-on: ubuntu-latest
     needs: quality
+    timeout-minutes: 20
 
     env:
-      # Valeurs fictives pour le build CI — aucune connexion réelle établie.
-      # next build ne requiert pas de DB : les Server Components et Actions
-      # ne s'exécutent qu'à la demande (pas au build time).
+      # Variables fictives pour le build CI.
+      # next build n'exécute pas les Server Components : aucune connexion réelle établie.
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       NEXTAUTH_SECRET: ci-build-secret-for-verification-only-32chars
       NEXTAUTH_URL: http://localhost:3000
       AUTH_TRUST_HOST: "true"
-      # Seule variable NEXT_PUBLIC_ embarquée au build time
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: BCIPlaceholderVapidPublicKeyForBuildVerification00
       AWS_ACCESS_KEY_ID: AKIACI00000000000000
       AWS_SECRET_ACCESS_KEY: "0000000000000000000000000000000000000000"
@@ -73,10 +82,21 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Installer les dépendances (déclenche prisma generate via postinstall)
+      - name: Installer les dépendances
         run: npm ci
 
+      # Le cache .next/cache survit entre les runs sur la même branche.
+      # Réduit le temps de build de ~60% après le premier run réussi.
+      - name: Cache Next.js (.next/cache)
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx', '**/*.css') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
+
       - name: Build Next.js
-        # On utilise "npx next build" et non "npm run build" pour éviter
-        # que "prisma migrate deploy" tourne en CI contre la DB de production.
+        # npx next build évite que "prisma migrate deploy" (dans npm run build)
+        # tourne en CI contre la base de données de production.
         run: npx next build
