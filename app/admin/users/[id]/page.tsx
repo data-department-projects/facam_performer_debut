@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { UserForm } from "@/components/admin/UserForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function EditUserPage({
   params,
 }: {
