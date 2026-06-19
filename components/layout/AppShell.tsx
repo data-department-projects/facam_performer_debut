@@ -44,7 +44,7 @@ export async function AppShell({ children, pageTitle, requireAdmin = false }: Pr
           userRole={roleLabel}
         />
         <main className="flex-1 p-8">
-          {showNotificationPrompt && <NotificationPermissionPrompt userId={userId} />}
+          {showNotificationPrompt && <NotificationPermissionPrompt />}
           {children}
         </main>
       </div>
