@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useMemo, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, RefreshCw, Send, UserX } from "lucide-react";
 import { createUser, updateUser, deactivateUser, sendUserCredentials } from "@/actions/admin";
@@ -56,18 +56,19 @@ export function UserForm({ mode, departments, user }: Props) {
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
   const [sendOnCreate, setSendOnCreate] = useState(true);
 
-  // Équipes filtrées selon le département sélectionné
-  const [availableTeams, setAvailableTeams] = useState<Team[]>([]);
-
-  useEffect(() => {
+  // Équipes disponibles — état dérivé, pas d'état géré
+  const availableTeams = useMemo(() => {
     const dept = departments.find((d) => d.id === departmentId);
-    const teams = dept?.subDepartments.flatMap((sd) => sd.teams) ?? [];
-    setAvailableTeams(teams);
-    // Réinitialiser l'équipe si elle n'appartient plus au département
-    if (teamId && !teams.find((t) => t.id === teamId)) {
+    return dept?.subDepartments.flatMap((sd) => sd.teams) ?? [];
+  }, [departments, departmentId]);
+
+  // Réinitialiser l'équipe si elle n'appartient plus au département sélectionné
+  useEffect(() => {
+    if (teamId && !availableTeams.find((t) => t.id === teamId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTeamId("");
     }
-  }, [departmentId, departments, teamId]);
+  }, [teamId, availableTeams]);
 
   function handleGeneratePassword() {
     setPassword(generateRandomPassword());

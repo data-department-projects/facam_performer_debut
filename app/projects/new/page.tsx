@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProjectForm } from "@/components/projects/ProjectForm";
 import { prisma } from "@/lib/prisma";
@@ -18,9 +19,9 @@ export default async function NewProjectPage() {
   return (
     <AppShell pageTitle="Nouveau projet">
       <div className="mb-2">
-        <a href="/projects" className="text-xs text-gray400 hover:text-facamBlue transition-colors">
+        <Link href="/projects" className="text-xs text-gray400 hover:text-facamBlue transition-colors">
           ← Retour aux projets
-        </a>
+        </Link>
       </div>
       <ProjectForm users={users} departments={departments} />
     </AppShell>

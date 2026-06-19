@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Fichiers d'infrastructure Claude Code (CJS, require()) — pas du code source
+    ".agents/**",
   ]),
 ]);
 

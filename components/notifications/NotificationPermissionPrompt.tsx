@@ -2,14 +2,10 @@
 
 import { useState } from "react";
 import { Bell, X } from "lucide-react";
-import { subscribeToPush, unsubscribeFromPush } from "@/lib/push-client";
-
-type Props = {
-  userId: string;
-};
+import { subscribeToPush } from "@/lib/push-client";
 
 // Affiché uniquement quand notificationConsent = NOT_ASKED (passé depuis le Server Component parent)
-export function NotificationPermissionPrompt({ userId }: Props) {
+export function NotificationPermissionPrompt() {
   const [visible, setVisible] = useState(true);
   const [loading, setLoading] = useState(false);
 

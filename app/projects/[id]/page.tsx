@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProjectDetailTabs } from "@/components/projects/ProjectDetailTabs";
 import type { MockProjectDetail } from "@/components/projects/ProjectFicheView";
@@ -266,9 +267,9 @@ export default async function ProjectDetailPage({ params }: Props) {
     return (
       <AppShell pageTitle={project.name}>
         <div className="mb-2">
-          <a href="/projects" className="text-xs text-gray400 hover:text-facamBlue transition-colors">
+          <Link href="/projects" className="text-xs text-gray400 hover:text-facamBlue transition-colors">
             ← Retour aux projets
-          </a>
+          </Link>
         </div>
         <ProjectDetailTabs
           project={project}
@@ -292,9 +293,9 @@ export default async function ProjectDetailPage({ params }: Props) {
   return (
     <AppShell pageTitle={mockProject.name}>
       <div className="mb-2">
-        <a href="/projects" className="text-xs text-gray400 hover:text-facamBlue transition-colors">
+        <Link href="/projects" className="text-xs text-gray400 hover:text-facamBlue transition-colors">
           ← Retour aux projets
-        </a>
+        </Link>
       </div>
       <ProjectDetailTabs
         project={mockProject}
