@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { UserList } from "@/components/admin/UserList";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminUsersPage() {
   const [users, departments] = await Promise.all([
     prisma.user.findMany({

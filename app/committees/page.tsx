@@ -5,6 +5,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { committeeInclude, toMockCommittee } from "@/app/committees/_db-helpers";
 
+export const dynamic = "force-dynamic";
+
 export default async function CommitteesPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");

@@ -79,7 +79,7 @@ Hypothèse structurante : le système gère une seule entité (FACAM STAIRWAY), 
 
 ### 08 Organigramme — Logique
 
-**Logique :**
+**Logique :*
 - CRUD département / sous-départements / équipes (Admin uniquement)
 - Structure hiérarchique exploitable pour déterminer le périmètre de supervision d'un manager (Règle 4 : départements → sous-départements → équipes)
 - Suppression d'un nœud bloquée s'il contient encore des utilisateurs rattachés

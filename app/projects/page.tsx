@@ -5,6 +5,8 @@ import type { MockProject } from "@/components/projects/ProjectList";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProjectsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");

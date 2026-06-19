@@ -7,6 +7,8 @@ import type { MockMilestone } from "@/components/projects/ProjectMilestonesList"
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 // ─── Données mock conservées pour le développement ───────────────────────────
 const MOCK_PROJECTS: Record<string, MockProjectDetail> = {
   "1": {
