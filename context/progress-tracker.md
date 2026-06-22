@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 4 — Projets, Planification (Gantt) & Comités (features 11–18)
-**Last completed:** Feature 15 — Comités — Logique (2026-06-19) — 4 Server Actions, Zod schemas, pages câblées Prisma, toggle statut actions
-**Next:** Feature 16 — Vue Collaborateur — Mes Projets & Mise à jour de mes tâches
+**Phase:** Phase 7 — Objectifs (features 25–27)
+**Last completed:** Feature 24 — Suivi ETP & Temps — Logique (2026-06-22) — `lib/dashboard-queries.ts` (`getEtpData` + types EtpEntry/TeamCharge), `lib/reports/csv-export.ts` (`rowsToCsv`), `lib/reports/etp-report.tsx` (PDF @react-pdf/renderer), routes `/api/reports/etp` et `/api/reports/etp/csv`, filtre période connecté à la DB via searchParam URL, exports PDF/CSV téléchargeables
+**Next:** Feature 25 — Objectifs individuels — UI complète
 
 ---
 
@@ -40,21 +40,22 @@ Update this file after every completed feature. Any AI agent reading this should
 - [x] 13 Confirmation des projets — Logique (`actions/projectValidation.ts` — confirmProject + addConfirmationNote, `components/projects/ProjectConfirmationPanel.tsx`, liste projets câblée DB avec filtrage par rôle Admin/Manager)
 - [x] 14 Comités — UI complète (`app/committees/`, `components/committees/` — 3 comités mock, liste cards + détail sections verticales + réunions expandables + actions + modales)
 - [x] 15 Comités — Logique (`actions/committees.ts`, `lib/schemas/committee.ts` — createCommittee nested Prisma, planMeeting, createCommitteeAction, updateCommitteeActionStatus, pages câblées DB, toggle statut dans CommitteeActionsList)
-- [ ] 16 Vue Collaborateur — Mes Projets & Mise à jour de mes tâches
-- [ ] 17 Vue Collaborateur — Mes Comités
-- [ ] 18 Rappels de Réunion — Email ou Notification Push
+- [x] 16 Vue Collaborateur — Mes Projets & Mise à jour de mes tâches (`app/projects/page.tsx` branche COLLABORATOR, `components/projects/CollaboratorProjectsView.tsx`, `MyProjectCard.tsx`, `MyAssignedTasksList.tsx`, `updateMyTaskProgress` dans `actions/projects.ts`)
+- [x] 17 Vue Collaborateur — Mes Comités (`app/committees/page.tsx` branche COLLABORATOR, `components/committees/CollaboratorCommitteesView.tsx`, `MyCommitteeCard.tsx`, `MyCommitteeActionsList.tsx`, `updateMyCommitteeActionStatus` dans `actions/committees.ts`)
+- [x] 18 Rappels de Réunion — Email ou Notification Push (`app/api/cron/meeting-reminder/route.ts` — cron complet, notifyUser push/email, reminderSentAt anti-doublon)
 
 ### Phase 5 — Week Planner
 
-- [ ] 19 Week Planner — UI complète
-- [ ] 20 Planification hebdomadaire — Logique
-- [ ] 21 Validation du Week Planner — Logique (Manager)
-- [ ] 22 Exécution quotidienne & déclaration du temps — Logique
+- [x] 19 Week Planner — UI complète (`app/week-planner/page.tsx`, `components/week-planner/` — grille 5 jours, exécution quotidienne, vue Manager, mock data)
+- [x] 19b Week Planner Manager + Validation Admin — UI (2026-06-22) — `ManagerWeekPlannerFullView` (onglets Mon Planning / Mon Équipe), `AdminWeekPlannerView` (liste Managers à valider), `validatorLabel` sur `WeekStatusBanner`, Week Planner ajouté dans `ADMIN_NAV`
+- [x] 20 Planification hebdomadaire — Logique (2026-06-22) — Server Actions CRUD + DB réelle, EmptyWeekView, navigation URL param, clé React
+- [x] 21 Validation du Week Planner — Logique (2026-06-22) — validateWeekPlanner + transaction Règle 8, cron weekly-planner-reminder
+- [x] 22 Exécution quotidienne & déclaration du temps — Logique (2026-06-22) — updateTaskExecution, upsert TimeEntry, Gantt Option A, DayTaskPanel branché
 
 ### Phase 6 — Suivi ETP & Temps de travail
 
-- [ ] 23 Suivi ETP & Temps — UI complète (Administrateur)
-- [ ] 24 Suivi ETP & Temps — Logique
+- [x] 23 Suivi ETP & Temps — UI complète (2026-06-22) — EtpPageView (filtre + KPIs + barres charge), EtpConsolidationTable (3 onglets), EtpExportButtons, page Admin-only
+- [x] 24 Suivi ETP & Temps — Logique (2026-06-22) — getEtpData Prisma, rowsToCsv, PDF @react-pdf, routes export, filtre période par URL searchParam
 
 ### Phase 7 — Objectifs
 

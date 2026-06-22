@@ -5,12 +5,14 @@ import { ProjectFicheView, type MockProjectDetail } from "@/components/projects/
 import { ProjectGanttView } from "@/components/projects/ProjectGanttView";
 import { ProjectMilestonesList, type MockMilestone } from "@/components/projects/ProjectMilestonesList";
 import { ProjectConfirmationPanel } from "@/components/projects/ProjectConfirmationPanel";
+import { ProjectExpensesList, type ProjectExpense } from "@/components/projects/ProjectExpensesList";
 
-type Tab = "fiche" | "gantt" | "jalons";
+type Tab = "fiche" | "gantt" | "jalons" | "finances";
 
 type Props = {
   project: MockProjectDetail;
   milestones: MockMilestone[];
+  expenses: ProjectExpense[];
   projectId: string;
   isEditable: boolean;
   isAdmin: boolean;
@@ -18,13 +20,14 @@ type Props = {
   confirmedByName?: string;
 };
 
-export function ProjectDetailTabs({ project, milestones, projectId, isEditable, isAdmin, confirmedAt, confirmedByName }: Props) {
+export function ProjectDetailTabs({ project, milestones, expenses, projectId, isEditable, isAdmin, confirmedAt, confirmedByName }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("fiche");
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "fiche", label: "Fiche projet" },
     { id: "gantt", label: "Planning Gantt" },
     { id: "jalons", label: "Jalons" },
+    { id: "finances", label: "Finances" },
   ];
 
   return (
@@ -65,6 +68,14 @@ export function ProjectDetailTabs({ project, milestones, projectId, isEditable, 
         <ProjectMilestonesList
           milestones={milestones}
           projectId={projectId}
+          isEditable={isEditable}
+        />
+      )}
+      {activeTab === "finances" && (
+        <ProjectExpensesList
+          expenses={expenses}
+          projectId={projectId}
+          initialBudget={project.initialBudget}
           isEditable={isEditable}
         />
       )}

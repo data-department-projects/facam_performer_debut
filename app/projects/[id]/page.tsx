@@ -34,9 +34,6 @@ const MOCK_PROJECTS: Record<string, MockProjectDetail> = {
     actualStartDate: "2026-03-05",
     targetEndDate: "2026-09-30",
     initialBudget: 45000000,
-    consumedBudget: 18500000,
-    estimatedHrCostDays: 120,
-    externalExpensesPlanned: 8000000,
     scopeIncluded:
       "Gestion des congés, suivi des performances, paie automatisée, tableau de bord RH.",
     scopeExcluded:
@@ -78,9 +75,6 @@ const MOCK_PROJECTS: Record<string, MockProjectDetail> = {
     estimatedStartDate: "2026-04-01",
     targetEndDate: "2026-12-15",
     initialBudget: 80000000,
-    consumedBudget: 5200000,
-    estimatedHrCostDays: 200,
-    externalExpensesPlanned: 35000000,
     scopeIncluded: "Migration VMs, mise en place CI/CD, configuration sécurité AWS.",
     scopeExcluded: "Refonte des applications métier (hors périmètre).",
     expectedDeliverables: [
@@ -116,9 +110,6 @@ const MOCK_PROJECTS: Record<string, MockProjectDetail> = {
     estimatedStartDate: "2026-05-01",
     targetEndDate: "2026-08-01",
     initialBudget: 12000000,
-    consumedBudget: 0,
-    estimatedHrCostDays: 45,
-    externalExpensesPlanned: 5000000,
     scopeIncluded: "Revue des processus financiers, RH et IT.",
     scopeExcluded: "",
     expectedDeliverables: ["Rapport d'audit", "Plan de remédiation"],
@@ -146,9 +137,6 @@ const MOCK_PROJECTS: Record<string, MockProjectDetail> = {
     actualStartDate: "2026-02-03",
     targetEndDate: "2026-07-31",
     initialBudget: 9500000,
-    consumedBudget: 6460000,
-    estimatedHrCostDays: 60,
-    externalExpensesPlanned: 4000000,
     scopeIncluded: "Formations AWS, Docker, Kubernetes, CI/CD GitLab.",
     scopeExcluded: "Formations management et soft skills (couvert par le plan RH annuel).",
     expectedDeliverables: [
@@ -213,6 +201,7 @@ export default async function ProjectDetailPage({ params }: Props) {
         include: { user: { select: { fullName: true } } },
       },
       milestones: { orderBy: { targetDate: "asc" } },
+      expenses: { orderBy: { expenseDate: "desc" } },
     },
   });
 
@@ -247,9 +236,6 @@ export default async function ProjectDetailPage({ params }: Props) {
         ? dbProject.actualEndDate.toISOString().split("T")[0]
         : undefined,
       initialBudget: Number(dbProject.initialBudget),
-      consumedBudget: Number(dbProject.consumedBudget),
-      estimatedHrCostDays: Number(dbProject.estimatedHrCostDays),
-      externalExpensesPlanned: Number(dbProject.externalExpensesPlanned),
       scopeIncluded: dbProject.scopeIncluded ?? "",
       scopeExcluded: dbProject.scopeExcluded ?? "",
       expectedDeliverables: dbProject.expectedDeliverables,
@@ -266,6 +252,14 @@ export default async function ProjectDetailPage({ params }: Props) {
         : undefined,
     }));
 
+    const expenses = dbProject.expenses.map((e) => ({
+      id: e.id,
+      label: e.label,
+      amount: Number(e.amount),
+      expenseType: e.expenseType as "ONE_TIME" | "MONTHLY" | "ANNUAL",
+      expenseDate: e.expenseDate.toISOString().split("T")[0],
+    }));
+
     return (
       <AppShell pageTitle={project.name}>
         <div className="mb-2">
@@ -276,6 +270,7 @@ export default async function ProjectDetailPage({ params }: Props) {
         <ProjectDetailTabs
           project={project}
           milestones={milestones}
+          expenses={expenses}
           projectId={dbProject.id}
           isEditable={isEditable}
           isAdmin={isAdmin}
@@ -302,6 +297,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       <ProjectDetailTabs
         project={mockProject}
         milestones={mockMilestones}
+        expenses={[]}
         projectId={id}
         isEditable={isEditable}
         isAdmin={isAdmin}

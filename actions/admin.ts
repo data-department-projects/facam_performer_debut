@@ -33,6 +33,14 @@ export async function createUser(
     return { success: true, userId: user.id };
   } catch (error) {
     console.error("[actions/admin] createUser", error);
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      return { success: false, error: "Un utilisateur avec cet email existe déjà." };
+    }
     return { success: false, error: "Impossible de créer l'utilisateur." };
   }
 }
