@@ -30,9 +30,6 @@ export type MockProjectDetail = {
   actualEndDate?: string;
   // Financier
   initialBudget: number;
-  consumedBudget: number;
-  estimatedHrCostDays: number;
-  externalExpensesPlanned: number;
   // Spécifications
   scopeIncluded: string;
   scopeExcluded: string;
@@ -87,9 +84,6 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export function ProjectFicheView({ project }: Props) {
-  const budgetPercent = project.initialBudget > 0
-    ? Math.round((project.consumedBudget / project.initialBudget) * 100)
-    : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -185,39 +179,14 @@ export function ProjectFicheView({ project }: Props) {
       </SectionCard>
 
       {/* 4 — Financier */}
-      <SectionCard title="4. Gestion financière & Ressources">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <Field
-            label="Budget initial"
-            value={`${project.initialBudget.toLocaleString("fr-FR")} FCFA`}
-          />
-          <Field
-            label="Budget consommé"
-            value={`${project.consumedBudget.toLocaleString("fr-FR")} FCFA`}
-          />
-          <Field
-            label="Charge estimée (j-h)"
-            value={`${project.estimatedHrCostDays} jours`}
-          />
-          <Field
-            label="Dépenses externes prévues"
-            value={`${project.externalExpensesPlanned.toLocaleString("fr-FR")} FCFA`}
-          />
-        </div>
-        <div className="mt-4 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray500">Consommation budgétaire</span>
-            <span className="text-xs font-medium text-gray500">{budgetPercent}%</span>
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray200">
-            <div
-              className={`h-full rounded-full transition-all ${
-                budgetPercent >= 90 ? "bg-error" : budgetPercent >= 75 ? "bg-facamYellow" : "bg-facamBlue"
-              }`}
-              style={{ width: `${Math.min(budgetPercent, 100)}%` }}
-            />
-          </div>
-        </div>
+      <SectionCard title="4. Gestion financière">
+        <Field
+          label="Budget initial"
+          value={`${project.initialBudget.toLocaleString("fr-FR")} FCFA`}
+        />
+        <p className="mt-3 text-xs text-gray400">
+          Le détail des dépenses est disponible dans l&apos;onglet <strong>Finances</strong>.
+        </p>
       </SectionCard>
 
       {/* 5 — Spécifications */}

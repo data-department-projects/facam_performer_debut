@@ -7,6 +7,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Tableau de bord", href: "/dashboard", iconName: "LayoutDashboard" },
   { label: "Organigramme", href: "/org-chart", iconName: "GitBranch" },
   { label: "Projets & Comités", href: "/projects", iconName: "FolderKanban" },
+  { label: "Week Planner", href: "/week-planner", iconName: "CalendarDays" },
   { label: "Suivi ETP & Temps", href: "/etp-tracking", iconName: "Clock" },
   { label: "Objectifs dép.", href: "/department-objectives", iconName: "Building2" },
   { label: "Administration", href: "/admin", iconName: "Users" },
@@ -40,6 +41,7 @@ function getNavItems(role: Role): NavItem[] {
     case "MANAGER":
       return MANAGER_NAV;
     case "COLLABORATOR":
+    case "INTERN":
       return COLLABORATOR_NAV;
   }
 }
@@ -56,7 +58,9 @@ export function Sidebar({ role, userName }: Props) {
       ? "Administrateur"
       : role === "MANAGER"
         ? "Manager"
-        : "Collaborateur";
+        : role === "INTERN"
+          ? "Stagiaire"
+          : "Collaborateur";
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-[260px] flex-col bg-facamBlue">

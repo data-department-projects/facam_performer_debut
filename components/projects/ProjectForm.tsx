@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2, ChevronRight } from "lucide-react";
-import { projectSchema, type ProjectInput } from "@/lib/schemas/project";
+import { projectSchema, PROJECT_MEMBER_ROLES, type ProjectInput } from "@/lib/schemas/project";
 import { createProject } from "@/actions/projects";
 
 type Tab = 1 | 2 | 3 | 4 | 5;
@@ -103,7 +103,6 @@ export function ProjectForm({ users, departments }: Props) {
       expectedDeliverables: [],
       successCriteria: [],
       documentationLinks: [],
-      externalExpensesPlanned: 0,
     },
   });
 
@@ -294,7 +293,7 @@ export function ProjectForm({ users, departments }: Props) {
                   <Label>Équipe projet</Label>
                   <button
                     type="button"
-                    onClick={() => appendTeamMember({ userId: "", roleLabel: "" })}
+                    onClick={() => appendTeamMember({ userId: "", roleLabel: PROJECT_MEMBER_ROLES[0] })}
                     className="inline-flex items-center gap-1 text-xs font-medium text-facamBlue hover:underline"
                   >
                     <Plus size={13} />
@@ -312,11 +311,16 @@ export function ProjectForm({ users, departments }: Props) {
                         <option key={u.id} value={u.id}>{u.fullName}</option>
                       ))}
                     </Select>
-                    <Input
+                    <Select
                       className="flex-1"
-                      placeholder="Rôle dans le projet"
+                      error={errors.teamMembers?.[index]?.roleLabel?.message}
                       {...register(`teamMembers.${index}.roleLabel`)}
-                    />
+                    >
+                      <option value="">Rôle dans le projet</option>
+                      {PROJECT_MEMBER_ROLES.map((role) => (
+                        <option key={role} value={role}>{role}</option>
+                      ))}
+                    </Select>
                     <button
                       type="button"
                       onClick={() => removeTeamMember(index)}
@@ -376,40 +380,23 @@ export function ProjectForm({ users, departments }: Props) {
           {/* ─── Onglet 4 : Financier ─── */}
           {activeTab === 4 && (
             <div className="flex flex-col gap-5">
-              <h3 className="text-base font-semibold text-facamDark">Gestion financière & Ressources</h3>
+              <h3 className="text-base font-semibold text-facamDark">Gestion financière</h3>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <Label required>Budget initial (FCFA)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Ex. 45000000"
-                    error={errors.initialBudget?.message}
-                    {...register("initialBudget")}
-                  />
-                </div>
+              <div className="flex flex-col gap-1.5 max-w-xs">
+                <Label required>Budget initial (FCFA)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  placeholder="Ex. 45000000"
+                  error={errors.initialBudget?.message}
+                  {...register("initialBudget")}
+                />
+              </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <Label required>Charge estimée (jours-homme)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Ex. 120"
-                    error={errors.estimatedHrCostDays?.message}
-                    {...register("estimatedHrCostDays")}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <Label>Dépenses externes prévues (FCFA)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Ex. 8000000"
-                    {...register("externalExpensesPlanned")}
-                  />
-                </div>
+              <div className="rounded-lg border border-gray200 bg-gray50 p-4">
+                <p className="text-xs text-gray500">
+                  Les dépenses sont enregistrées au fil de l&apos;exécution depuis la vue détail du projet, onglet <strong>Finances</strong>.
+                </p>
               </div>
             </div>
           )}

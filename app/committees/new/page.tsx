@@ -12,7 +12,7 @@ export default async function NewCommitteePage() {
   if (!session?.user) redirect("/login");
 
   const role = session.user.role;
-  if (role === "COLLABORATOR") redirect("/committees");
+  if (role === "COLLABORATOR" || role === "INTERN") redirect("/committees");
 
   const [departments, users] = await Promise.all([
     prisma.department.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
