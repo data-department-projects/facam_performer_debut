@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProjectList } from "@/components/projects/ProjectList";
 import type { MockProject } from "@/components/projects/ProjectList";
+import { CollaboratorProjectsView } from "@/components/projects/CollaboratorProjectsView";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
@@ -14,11 +15,50 @@ export default async function ProjectsPage() {
   const role = session.user.role;
   const userId = session.user.id;
 
-  // Collaborateur — sa vue "Mes Projets" est construite en feature 16
-  if (role === "COLLABORATOR") {
+  if (role === "COLLABORATOR" || role === "INTERN") {
+    const collaboratorData = await prisma.project.findMany({
+      where: {
+        isConfirmed: true,
+        teamMembers: { some: { userId } },
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        estimatedStartDate: true,
+        targetEndDate: true,
+        projectManager: { select: { fullName: true } },
+        ganttTasks: {
+          where: { responsibleUserId: userId },
+          select: { id: true, title: true, endDate: true, progressPercent: true },
+          orderBy: { endDate: "asc" },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const projects = collaboratorData.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description ?? "",
+      estimatedStartDate: p.estimatedStartDate.toISOString().split("T")[0],
+      targetEndDate: p.targetEndDate.toISOString().split("T")[0],
+      projectManager: p.projectManager,
+    }));
+
+    const tasks = collaboratorData.flatMap((p) =>
+      p.ganttTasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        endDate: t.endDate.toISOString().split("T")[0],
+        progressPercent: t.progressPercent,
+        projectName: p.name,
+      })),
+    );
+
     return (
       <AppShell pageTitle="Projets & Planification">
-        <ProjectList projects={[]} />
+        <CollaboratorProjectsView projects={projects} tasks={tasks} />
       </AppShell>
     );
   }

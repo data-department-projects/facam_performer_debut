@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/permissions";
-import { projectSchema, type ProjectInput } from "@/lib/schemas/project";
+import { requireRole, getCurrentUser } from "@/lib/permissions";
+import type { Role } from "@/app/generated/prisma/client";
+import { projectSchema, projectExpenseSchema, type ProjectInput } from "@/lib/schemas/project";
 
 export async function createProject(
   rawData: unknown,
@@ -48,9 +49,6 @@ export async function createProject(
             ? new Date(input.actualEndDate)
             : null,
           initialBudget: input.initialBudget,
-          consumedBudget: 0,
-          estimatedHrCostDays: input.estimatedHrCostDays,
-          externalExpensesPlanned: input.externalExpensesPlanned,
           scopeIncluded: input.scopeIncluded ?? "",
           scopeExcluded: input.scopeExcluded ?? "",
           expectedDeliverables: input.expectedDeliverables.map((d) => d.value),
@@ -131,5 +129,95 @@ export async function deleteMilestone(
   } catch (error) {
     console.error("[actions/projects] deleteMilestone", error);
     return { success: false, error: "Impossible de supprimer le jalon." };
+  }
+}
+
+export async function createProjectExpense(
+  projectId: string,
+  rawData: unknown,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !["ADMIN", "MANAGER"].includes(currentUser.role as Role)) {
+      return { success: false, error: "Accès non autorisé." };
+    }
+
+    const parsed = projectExpenseSchema.safeParse(rawData);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
+    }
+
+    const { label, amount, expenseType, expenseDate } = parsed.data;
+    const [y, m, d] = expenseDate.split("-").map(Number);
+
+    await prisma.projectExpense.create({
+      data: {
+        projectId,
+        label: label.trim(),
+        amount,
+        expenseType,
+        expenseDate: new Date(Date.UTC(y, m - 1, d)),
+        createdById: currentUser.id,
+      },
+    });
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[actions/projects] createProjectExpense", error);
+    return { success: false, error: "Impossible d'enregistrer la dépense." };
+  }
+}
+
+export async function deleteProjectExpense(
+  expenseId: string,
+  projectId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole(["ADMIN", "MANAGER"]);
+
+    await prisma.projectExpense.delete({ where: { id: expenseId } });
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[actions/projects] deleteProjectExpense", error);
+    return { success: false, error: "Impossible de supprimer la dépense." };
+  }
+}
+
+export async function updateMyTaskProgress(
+  taskId: string,
+  progressPercent: number,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser || (currentUser.role !== "COLLABORATOR" && currentUser.role !== "INTERN")) {
+      return { success: false, error: "Accès non autorisé." };
+    }
+
+    const task = await prisma.ganttTask.findUnique({
+      where: { id: taskId },
+      select: { responsibleUserId: true },
+    });
+
+    if (!task || task.responsibleUserId !== currentUser.id) {
+      return { success: false, error: "Tâche introuvable ou accès refusé." };
+    }
+
+    if (!Number.isInteger(progressPercent) || progressPercent < 0 || progressPercent > 100) {
+      return { success: false, error: "L'avancement doit être 0, 25, 50, 75 ou 100." };
+    }
+
+    await prisma.ganttTask.update({
+      where: { id: taskId },
+      data: { progressPercent },
+    });
+
+    revalidatePath("/projects");
+    return { success: true };
+  } catch (error) {
+    console.error("[actions/projects] updateMyTaskProgress", error);
+    return { success: false, error: "Impossible de mettre à jour l'avancement." };
   }
 }

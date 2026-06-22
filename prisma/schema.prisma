@@ -15,6 +15,7 @@ enum Role {
   ADMIN
   MANAGER
   COLLABORATOR
+  INTERN
 }
 
 enum NotificationConsent {
@@ -121,6 +122,12 @@ enum CommitteeActionStatus {
   DONE
 }
 
+enum ProjectExpenseType {
+  ONE_TIME
+  MONTHLY
+  ANNUAL
+}
+
 // ============================================================
 // ORGANISATION
 // ============================================================
@@ -202,6 +209,7 @@ model User {
   validatedWeekPlanners   WeekPlanner[]       @relation("WeekPlannerValidator")
   timeEntries             TimeEntry[]
   objectives              Objective[]
+  projectExpenses         ProjectExpense[]    @relation("ExpenseCreator")
   bugReports              BugReport[]
   attachments             Attachment[]
 
@@ -257,9 +265,6 @@ model Project {
   targetEndDate            DateTime
   actualEndDate            DateTime?
   initialBudget            Decimal         @default(0)
-  consumedBudget           Decimal         @default(0)
-  estimatedHrCostDays      Decimal         @default(0)
-  externalExpensesPlanned  Decimal         @default(0)
   scopeIncluded            String?
   scopeExcluded            String?
   expectedDeliverables     String[]
@@ -280,9 +285,26 @@ model Project {
   milestones           ProjectMilestone[]
   ganttTasks           GanttTask[]
   weekPlannerTasks     WeekPlannerTask[]
+  expenses             ProjectExpense[]
 
   @@index([projectManagerId])
   @@index([isConfirmed])
+}
+
+model ProjectExpense {
+  id          String             @id @default(uuid())
+  projectId   String
+  label       String
+  amount      Decimal
+  expenseType ProjectExpenseType
+  expenseDate DateTime
+  createdById String
+  createdAt   DateTime           @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("ExpenseCreator", fields: [createdById], references: [id])
+
+  @@index([projectId])
 }
 
 model ProjectTeamMember {
@@ -430,6 +452,7 @@ model WeekPlanner {
   validatedBy User?             @relation("WeekPlannerValidator", fields: [validatedById], references: [id])
   tasks       WeekPlannerTask[]
 
+  @@unique([userId, weekStartDate])
   @@index([userId])
   @@index([status])
 }

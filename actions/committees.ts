@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/permissions";
+import { requireRole, getCurrentUser } from "@/lib/permissions";
 import {
   createCommitteeSchema,
   planMeetingSchema,
@@ -175,6 +175,38 @@ export async function updateCommitteeActionStatus(
     return { success: true };
   } catch (error) {
     console.error("[actions/committees] updateCommitteeActionStatus", error);
+    return { success: false, error: "Impossible de mettre à jour le statut." };
+  }
+}
+
+export async function updateMyCommitteeActionStatus(
+  actionId: string,
+  status: CommitteeActionStatus,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser || (currentUser.role !== "COLLABORATOR" && currentUser.role !== "INTERN")) {
+      return { success: false, error: "Accès refusé." };
+    }
+
+    const action = await prisma.committeeAction.findUnique({
+      where: { id: actionId },
+      select: { responsibleUserId: true },
+    });
+
+    if (!action || action.responsibleUserId !== currentUser.id) {
+      return { success: false, error: "Action introuvable ou accès refusé." };
+    }
+
+    await prisma.committeeAction.update({
+      where: { id: actionId },
+      data: { status },
+    });
+
+    revalidatePath("/committees");
+    return { success: true };
+  } catch (error) {
+    console.error("[actions/committees] updateMyCommitteeActionStatus", error);
     return { success: false, error: "Impossible de mettre à jour le statut." };
   }
 }

@@ -88,23 +88,32 @@ export function UserForm({ mode, departments, user }: Props) {
     };
 
     startTransition(async () => {
-      if (mode === "create") {
-        const result = await createUser(data);
-        if (result.success && result.userId) {
-          if (sendOnCreate && password) {
-            await sendUserCredentials(result.userId, password);
+      try {
+        if (mode === "create") {
+          const result = await createUser(data);
+          if (result.success && result.userId) {
+            if (sendOnCreate && password) {
+              try {
+                await sendUserCredentials(result.userId, password);
+              } catch {
+                // Envoi email échoué — l'utilisateur est créé, on navigue quand même
+              }
+            }
+            router.push("/admin/users");
+          } else {
+            setError(result.error ?? "Une erreur est survenue.");
           }
-          router.push(`/admin/users/${result.userId}`);
         } else {
-          setError(result.error ?? "Une erreur est survenue.");
+          const result = await updateUser(user.id, data);
+          if (result.success) {
+            router.refresh();
+          } else {
+            setError(result.error ?? "Une erreur est survenue.");
+          }
         }
-      } else {
-        const result = await updateUser(user.id, data);
-        if (result.success) {
-          router.refresh();
-        } else {
-          setError(result.error ?? "Une erreur est survenue.");
-        }
+      } catch (err) {
+        console.error("[UserForm] handleSubmit", err);
+        setError("Une erreur inattendue est survenue. Vérifiez la console.");
       }
     });
   }
