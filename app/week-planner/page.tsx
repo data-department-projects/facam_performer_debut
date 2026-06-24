@@ -10,13 +10,11 @@ import { EmptyWeekView } from "@/components/week-planner/EmptyWeekView";
 export const dynamic = "force-dynamic";
 
 function getCurrentWeekMonday(): string {
-  const today = new Date();
-  const day = today.getDay();
+  const now = new Date();
+  const day = now.getUTCDay();
   const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-  return monday.toISOString().split("T")[0];
+  const ts = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diff);
+  return new Date(ts).toISOString().split("T")[0];
 }
 
 function formatWeekLabel(weekStartDate: string): string {
@@ -33,7 +31,7 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
   if (!session?.user?.id) redirect("/login");
 
   const { week } = await searchParams;
-  const weekStartDate = week ?? getCurrentWeekMonday();
+  const weekStartDate = (week && /^\d{4}-\d{2}-\d{2}$/.test(week)) ? week : getCurrentWeekMonday();
 
   const weekStart = new Date(weekStartDate + "T00:00:00");
 
@@ -111,6 +109,8 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
   const weekLabel = formatWeekLabel(weekStartDate);
 
   if (role === "MANAGER") {
+    if (!session.user.departmentId) redirect("/dashboard");
+
     const teamMembers = await prisma.user.findMany({
       where: {
         role: { in: ["COLLABORATOR", "INTERN"] },

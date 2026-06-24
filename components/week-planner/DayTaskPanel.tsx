@@ -64,7 +64,7 @@ export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, onA
       const result = await updateTaskExecution({
         taskId: task.id,
         status: state.status,
-        hoursSpent: parseFloat(state.hours) || 0,
+        hoursSpent: state.hours.trim() === "" ? null : (parseFloat(state.hours) || 0),
         comment: state.comment,
       });
 

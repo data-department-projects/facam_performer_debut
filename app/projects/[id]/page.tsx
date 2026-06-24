@@ -1,9 +1,10 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProjectDetailTabs } from "@/components/projects/ProjectDetailTabs";
 import type { MockProjectDetail } from "@/components/projects/ProjectFicheView";
 import type { MockMilestone } from "@/components/projects/ProjectMilestonesList";
+import type { GanttTaskData, GanttTeamMember } from "@/components/projects/ProjectGanttView";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
@@ -185,8 +186,11 @@ type Props = {
 export default async function ProjectDetailPage({ params }: Props) {
   const { id } = await params;
   const session = await auth();
-  const userRole = session?.user?.role;
-  const isEditable = userRole !== "COLLABORATOR";
+  if (!session?.user) redirect("/login");
+
+  const userRole = session.user.role;
+  const currentUserId = session.user.id ?? "";
+  const isEditable = userRole !== "COLLABORATOR" && userRole !== "INTERN";
   const isAdmin = userRole === "ADMIN";
 
   // Charger depuis la DB en priorité (projets créés via le formulaire)
@@ -194,18 +198,25 @@ export default async function ProjectDetailPage({ params }: Props) {
     where: { id },
     include: {
       sponsor: { select: { fullName: true } },
-      projectManager: { select: { fullName: true } },
+      projectManager: { select: { id: true, fullName: true } },
       beneficiaryDepartment: { select: { name: true } },
       confirmedBy: { select: { fullName: true } },
       teamMembers: {
-        include: { user: { select: { fullName: true } } },
+        include: { user: { select: { id: true, fullName: true } } },
       },
       milestones: { orderBy: { targetDate: "asc" } },
       expenses: { orderBy: { expenseDate: "desc" } },
+      ganttTasks: { orderBy: { startDate: "asc" } },
     },
   });
 
   if (dbProject) {
+    // COLLABORATOR / INTERN : uniquement les projets confirmés dont ils sont membres
+    if (userRole === "COLLABORATOR" || userRole === "INTERN") {
+      const isMember = dbProject.teamMembers.some((m) => m.userId === currentUserId);
+      if (!isMember) redirect("/projects");
+    }
+
     const project: MockProjectDetail = {
       id: dbProject.id,
       code: dbProject.code,
@@ -260,6 +271,26 @@ export default async function ProjectDetailPage({ params }: Props) {
       expenseDate: e.expenseDate.toISOString().split("T")[0],
     }));
 
+    const ganttTasks: GanttTaskData[] = dbProject.ganttTasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      startDate: t.startDate.toISOString().split("T")[0],
+      endDate: t.endDate.toISOString().split("T")[0],
+      progressPercent: t.progressPercent,
+      status: t.status,
+      dependsOnIds: t.dependsOnIds,
+      responsibleUserId: t.responsibleUserId,
+    }));
+
+    // Chef de projet + membres d'équipe (dédupliqués) comme options du select responsable
+    const seenIds = new Set<string>();
+    const teamMembersForGantt: GanttTeamMember[] = [];
+    const addMember = (id: string, fullName: string) => {
+      if (!seenIds.has(id)) { seenIds.add(id); teamMembersForGantt.push({ id, fullName }); }
+    };
+    addMember(dbProject.projectManager.id, dbProject.projectManager.fullName);
+    for (const m of dbProject.teamMembers) addMember(m.user.id, m.user.fullName);
+
     return (
       <AppShell pageTitle={project.name}>
         <div className="mb-2">
@@ -271,9 +302,12 @@ export default async function ProjectDetailPage({ params }: Props) {
           project={project}
           milestones={milestones}
           expenses={expenses}
+          ganttTasks={ganttTasks}
+          teamMembersForGantt={teamMembersForGantt}
           projectId={dbProject.id}
           isEditable={isEditable}
           isAdmin={isAdmin}
+          currentUserId={currentUserId}
           confirmedAt={dbProject.confirmedAt?.toISOString()}
           confirmedByName={dbProject.confirmedBy?.fullName}
         />
@@ -298,9 +332,12 @@ export default async function ProjectDetailPage({ params }: Props) {
         project={mockProject}
         milestones={mockMilestones}
         expenses={[]}
+        ganttTasks={[]}
+        teamMembersForGantt={[]}
         projectId={id}
         isEditable={isEditable}
         isAdmin={isAdmin}
+        currentUserId={currentUserId}
       />
     </AppShell>
   );

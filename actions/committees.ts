@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireRole, getCurrentUser } from "@/lib/permissions";
+import { requireRole } from "@/lib/permissions";
 import {
   createCommitteeSchema,
   planMeetingSchema,
@@ -184,10 +184,7 @@ export async function updateMyCommitteeActionStatus(
   status: CommitteeActionStatus,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser || (currentUser.role !== "COLLABORATOR" && currentUser.role !== "INTERN")) {
-      return { success: false, error: "Accès refusé." };
-    }
+    const currentUser = await requireRole(["COLLABORATOR", "INTERN"]);
 
     const action = await prisma.committeeAction.findUnique({
       where: { id: actionId },

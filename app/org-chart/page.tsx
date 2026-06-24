@@ -1,35 +1,74 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { OrgTree } from "@/components/org-chart/OrgTree";
+import { OrgChartView } from "@/components/org-chart/OrgChartView";
+import { AppShell } from "@/components/layout/AppShell";
 import type { Role } from "@/app/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrgChartPage() {
   const session = await auth();
-  const role = session!.user.role as Role;
-  const userDepartmentId = session!.user.departmentId;
+  if (!session?.user) redirect("/login");
 
-  const whereClause =
-    role === "ADMIN" ? {} : { id: userDepartmentId };
+  const role = session.user.role as Role;
+  const isAdmin = role === "ADMIN";
 
+  if (isAdmin) {
+    const departments = await prisma.department.findMany({
+      include: {
+        subDepartments: {
+          include: {
+            teams: {
+              include: {
+                manager: { select: { id: true, fullName: true, email: true, role: true } },
+                members: {
+                  select: { id: true, fullName: true, email: true, role: true },
+                  where: { isActive: true },
+                  orderBy: { fullName: "asc" },
+                },
+              },
+              orderBy: { name: "asc" },
+            },
+          },
+          orderBy: { name: "asc" },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    const allUsers = await prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, fullName: true, role: true },
+      orderBy: { fullName: "asc" },
+    });
+
+    return <OrgTree departments={departments} allUsers={allUsers} isAdmin={true} />;
+  }
+
+  // Non-Admin: fetch all departments with ALL their users (via direct departmentId relation)
+  // + team structure for hierarchy (who manages whom)
   const departments = await prisma.department.findMany({
-    where: whereClause,
     include: {
+      // ALL active people in this department
+      users: {
+        where: { isActive: true },
+        select: { id: true, fullName: true, email: true, role: true },
+        orderBy: { fullName: "asc" },
+      },
+      // Team structure — used only to build manager→members relationships
       subDepartments: {
         include: {
           teams: {
             include: {
-              manager: {
-                select: { id: true, fullName: true, email: true, role: true },
-              },
+              manager: { select: { id: true } },
               members: {
-                select: { id: true, fullName: true, email: true, role: true },
                 where: { isActive: true },
+                select: { id: true, fullName: true, email: true, role: true },
                 orderBy: { fullName: "asc" },
               },
             },
-            orderBy: { name: "asc" },
           },
         },
         orderBy: { name: "asc" },
@@ -38,22 +77,9 @@ export default async function OrgChartPage() {
     orderBy: { name: "asc" },
   });
 
-  // Liste des utilisateurs actifs — utilisée dans la modale "Créer une équipe"
-  // pour sélectionner le responsable (Admin uniquement)
-  const allUsers =
-    role === "ADMIN"
-      ? await prisma.user.findMany({
-          where: { isActive: true },
-          select: { id: true, fullName: true, role: true },
-          orderBy: { fullName: "asc" },
-        })
-      : [];
-
   return (
-    <OrgTree
-      departments={departments}
-      allUsers={allUsers}
-      isAdmin={role === "ADMIN"}
-    />
+    <AppShell pageTitle="Organigramme">
+      <OrgChartView departments={departments} />
+    </AppShell>
   );
 }

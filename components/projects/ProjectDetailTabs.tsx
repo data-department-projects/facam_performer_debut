@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { ProjectFicheView, type MockProjectDetail } from "@/components/projects/ProjectFicheView";
-import { ProjectGanttView } from "@/components/projects/ProjectGanttView";
+import {
+  ProjectGanttView,
+  type GanttTaskData,
+  type GanttTeamMember,
+} from "@/components/projects/ProjectGanttView";
 import { ProjectMilestonesList, type MockMilestone } from "@/components/projects/ProjectMilestonesList";
 import { ProjectConfirmationPanel } from "@/components/projects/ProjectConfirmationPanel";
 import { ProjectExpensesList, type ProjectExpense } from "@/components/projects/ProjectExpensesList";
@@ -13,14 +17,17 @@ type Props = {
   project: MockProjectDetail;
   milestones: MockMilestone[];
   expenses: ProjectExpense[];
+  ganttTasks: GanttTaskData[];
+  teamMembersForGantt: GanttTeamMember[];
   projectId: string;
   isEditable: boolean;
   isAdmin: boolean;
+  currentUserId: string;
   confirmedAt?: string;
   confirmedByName?: string;
 };
 
-export function ProjectDetailTabs({ project, milestones, expenses, projectId, isEditable, isAdmin, confirmedAt, confirmedByName }: Props) {
+export function ProjectDetailTabs({ project, milestones, expenses, ganttTasks, teamMembersForGantt, projectId, isEditable, isAdmin, currentUserId, confirmedAt, confirmedByName }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("fiche");
 
   const tabs: { id: Tab; label: string }[] = [
@@ -63,7 +70,15 @@ export function ProjectDetailTabs({ project, milestones, expenses, projectId, is
 
       {/* Contenu */}
       {activeTab === "fiche" && <ProjectFicheView project={project} />}
-      {activeTab === "gantt" && <ProjectGanttView projectId={projectId} />}
+      {activeTab === "gantt" && (
+        <ProjectGanttView
+          projectId={projectId}
+          tasks={ganttTasks}
+          teamMembers={teamMembersForGantt}
+          isEditable={isEditable}
+          currentUserId={currentUserId}
+        />
+      )}
       {activeTab === "jalons" && (
         <ProjectMilestonesList
           milestones={milestones}

@@ -2,7 +2,13 @@ import { z } from "zod";
 
 export const createPlannerSchema = z.object({
   weekStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format attendu : YYYY-MM-DD"),
-});
+}).refine(
+  (data) => {
+    const [y, m, d] = data.weekStartDate.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 1;
+  },
+  { message: "La date de début doit être un lundi", path: ["weekStartDate"] },
+);
 
 export const addTaskSchema = z.object({
   plannerId: z.string().uuid(),
@@ -26,7 +32,7 @@ export const validatePlannerSchema = z.object({
 export const updateTaskExecutionSchema = z.object({
   taskId: z.string().uuid(),
   status: z.enum(["STARTED", "IN_PROGRESS", "DONE", "NOT_DONE"]),
-  hoursSpent: z.number().min(0).max(24),
+  hoursSpent: z.union([z.null(), z.number().min(0).max(24)]),
   comment: z.string(),
 }).refine(
   (data) => data.status !== "NOT_DONE" || data.comment.trim().length > 0,

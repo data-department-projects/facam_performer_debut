@@ -1,11 +1,17 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProjectForm } from "@/components/projects/ProjectForm";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewProjectPage() {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+  if (session.user.role !== "ADMIN" && session.user.role !== "MANAGER") redirect("/projects");
+
   const [users, departments] = await Promise.all([
     prisma.user.findMany({
       where: { isActive: true },

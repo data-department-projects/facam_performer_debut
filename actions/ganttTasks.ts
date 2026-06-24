@@ -2,9 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/permissions";
+import { requireRole, getCurrentUser } from "@/lib/permissions";
 import { parseGanttExcel } from "@/lib/gantt-import";
 import { uploadAttachment, buildGanttImportKey } from "@/lib/s3-client";
+import { ganttTaskSchema } from "@/lib/schemas/ganttTask";
+import { z } from "zod";
+
+const ganttTaskStatusSchema = z.object({
+  status: z.enum(["TODO", "IN_PROGRESS", "DONE", "BLOCKED"]),
+  progressPercent: z.coerce.number().int().min(0).max(100),
+});
 
 export async function importGanttTasks(
   formData: FormData,
@@ -88,5 +95,167 @@ export async function importGanttTasks(
   } catch (error) {
     console.error("[actions/ganttTasks] importGanttTasks", error);
     return { success: false, error: "Impossible d'importer le planning." };
+  }
+}
+
+// ── Création manuelle ─────────────────────────────────────────────────────────
+
+export async function createGanttTask(
+  projectId: string,
+  rawData: unknown,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole(["ADMIN", "MANAGER"]);
+
+    const parsed = ganttTaskSchema.safeParse(rawData);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? "Données invalides." };
+    }
+
+    const { title, startDate, endDate, responsibleUserId, dependsOnIds, progressPercent } =
+      parsed.data;
+
+    await prisma.ganttTask.create({
+      data: {
+        projectId,
+        title,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        progressPercent,
+        responsibleUserId,
+        dependsOnIds,
+      },
+    });
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[actions/ganttTasks] createGanttTask", error);
+    return { success: false, error: "Impossible de créer la tâche." };
+  }
+}
+
+// ── Modification ──────────────────────────────────────────────────────────────
+
+export async function updateGanttTask(
+  taskId: string,
+  rawData: unknown,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole(["ADMIN", "MANAGER"]);
+
+    const task = await prisma.ganttTask.findUnique({
+      where: { id: taskId },
+      select: { projectId: true },
+    });
+    if (!task) return { success: false, error: "Tâche introuvable." };
+
+    const parsed = ganttTaskSchema.safeParse(rawData);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? "Données invalides." };
+    }
+
+    const { title, startDate, endDate, responsibleUserId, dependsOnIds, progressPercent } =
+      parsed.data;
+
+    await prisma.ganttTask.update({
+      where: { id: taskId },
+      data: {
+        title,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        progressPercent,
+        responsibleUserId,
+        dependsOnIds,
+      },
+    });
+
+    revalidatePath(`/projects/${task.projectId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[actions/ganttTasks] updateGanttTask", error);
+    return { success: false, error: "Impossible de modifier la tâche." };
+  }
+}
+
+// ── Mise à jour du statut (responsable + managers) ───────────────────────────
+
+export async function updateGanttTaskStatus(
+  taskId: string,
+  rawData: unknown,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id) return { success: false, error: "Non authentifié." };
+
+    const parsed = ganttTaskStatusSchema.safeParse(rawData);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? "Données invalides." };
+    }
+
+    const task = await prisma.ganttTask.findUnique({
+      where: { id: taskId },
+      select: { projectId: true, responsibleUserId: true },
+    });
+    if (!task) return { success: false, error: "Tâche introuvable." };
+
+    // COLLABORATOR / INTERN → uniquement leurs propres tâches
+    const role = currentUser.role as string;
+    if (role !== "ADMIN" && role !== "MANAGER") {
+      if (task.responsibleUserId !== currentUser.id) {
+        return { success: false, error: "Vous ne pouvez mettre à jour que vos propres tâches." };
+      }
+    }
+
+    await prisma.ganttTask.update({
+      where: { id: taskId },
+      data: {
+        status: parsed.data.status as "TODO" | "IN_PROGRESS" | "DONE" | "BLOCKED",
+        progressPercent: parsed.data.progressPercent,
+      },
+    });
+
+    revalidatePath(`/projects/${task.projectId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[actions/ganttTasks] updateGanttTaskStatus", error);
+    return { success: false, error: "Impossible de mettre à jour le statut." };
+  }
+}
+
+// ── Suppression ───────────────────────────────────────────────────────────────
+
+export async function deleteGanttTask(
+  taskId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole(["ADMIN", "MANAGER"]);
+
+    const task = await prisma.ganttTask.findUnique({
+      where: { id: taskId },
+      select: { projectId: true },
+    });
+    if (!task) return { success: false, error: "Tâche introuvable." };
+
+    await prisma.$transaction(async (tx) => {
+      // Retirer taskId des prérequis des autres tâches du projet
+      const dependents = await tx.ganttTask.findMany({
+        where: { projectId: task.projectId, dependsOnIds: { has: taskId } },
+        select: { id: true, dependsOnIds: true },
+      });
+      for (const dep of dependents) {
+        await tx.ganttTask.update({
+          where: { id: dep.id },
+          data: { dependsOnIds: dep.dependsOnIds.filter((id) => id !== taskId) },
+        });
+      }
+      await tx.ganttTask.delete({ where: { id: taskId } });
+    });
+
+    revalidatePath(`/projects/${task.projectId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[actions/ganttTasks] deleteGanttTask", error);
+    return { success: false, error: "Impossible de supprimer la tâche." };
   }
 }
