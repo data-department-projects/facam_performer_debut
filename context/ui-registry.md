@@ -108,7 +108,24 @@ _Formulaire de définition d'objectif (fréquence configurable), vue de suivi pe
 
 ### Actions à traiter
 
-_Liste centralisée des éléments en attente, carte d'alerte de retard/surcharge — à documenter à la Phase 8 (Feature 24)._
+**Feature 28 — implémentée (2026-06-23)**
+
+| Composant | Chemin | Rôle |
+|---|---|---|
+| `ActionsToProcessView` | `components/actions-to-process/ActionsToProcessView.tsx` | Client Component — tabs shadcn/ui, routing conditionnel Admin/Manager |
+| `ProjectConfirmCard` | `components/actions-to-process/ProjectConfirmCard.tsx` | Card projet en attente de confirmation (Admin only) |
+| `WeekPlannerValidateCard` | `components/actions-to-process/WeekPlannerValidateCard.tsx` | Card week planner soumis à valider (Manager) |
+| `CommitteeActionOverdueCard` | `components/actions-to-process/CommitteeActionOverdueCard.tsx` | Card action comité en retard avec badge rouge |
+
+**Patterns clés :**
+- Tabs : `<Tabs defaultValue={...}><TabsList><TabsTrigger>` avec badge compteur inline dans le label
+- Badge compteur actif tab : `rounded-full bg-[--color-facamBlue] px-1.5 py-0.5 text-xs font-medium text-white`
+- Badge erreur (retard) : `rounded-full bg-[--color-error] px-1.5 py-0.5 text-xs font-medium text-white`
+- Card layout : `flex items-center justify-between rounded-[--radius-xl] border border-[--color-gray-200] bg-white p-5 shadow-sm`
+- Icône container : `flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[--radius-lg] bg-[--color-facamBlueTint]`
+- Empty state : `<CheckCircle2>` lucide centré + texte `text-[--color-gray-400]`
+- Bouton CTA card : outline, `border border-[--color-gray-200] text-[--color-facamBlue] hover:bg-[--color-facamBlueTint]`
+- Mock data scopée : Admin reçoit 3 catégories, Manager reçoit 2 (pendingProjects toujours vide)
 
 ---
 

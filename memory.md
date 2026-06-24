@@ -1,89 +1,81 @@
-# Mémoire — Features 16→19b + Week Planner Redesign (Option A)
+# Mémoire — Features 1→30 complètes, prochaine : Feature 31
 
-Dernière mise à jour : 2026-06-22
+Dernière mise à jour : 2026-06-23
 
 ## Ce qui a été créé
 
-### Feature 16 — Vue Collaborateur — Mes Projets & Mise à jour de mes tâches
-- `components/projects/CollaboratorProjectsView.tsx` — liste des projets du Collaborateur
-- `components/projects/MyProjectCard.tsx` — carte projet avec progression
-- `components/projects/MyAssignedTasksList.tsx` — tâches assignées avec `updateMyTaskProgress`
-- `app/projects/page.tsx` — branche COLLABORATOR ajoutée
-- `actions/projects.ts` — Server Action `updateMyTaskProgress()` (scope `responsibleUserId === session.user.id`)
+### Features 1–27 (acquis de la session précédente)
+Tout le socle est en place : auth, emails, schéma DB, S3, push VAPID, organigramme, administration, projets + Gantt, comités, vues Collaborateur, rappels de réunion, Week Planner complet (UI + Logique), Suivi ETP (UI + Logique), Objectifs individuels + Résultats clés (UI + Logique), Objectifs Départements.
 
-### Feature 17 — Vue Collaborateur — Mes Comités
-- `components/committees/CollaboratorCommitteesView.tsx`
-- `components/committees/MyCommitteeCard.tsx`
-- `components/committees/MyCommitteeActionsList.tsx`
-- `app/committees/page.tsx` — branche COLLABORATOR ajoutée
-- `actions/committees.ts` — `updateMyCommitteeActionStatus()` ajoutée
+### Feature 28 — Actions à traiter — UI complète
+- `components/actions-to-process/types.ts` — types partagés (`PendingProject`, `PendingWeekPlanner`, `OverdueCommitteeAction`, `ActionsToProcessData`)
+- `lib/mock/actions-to-process.ts` — mock data typée
+- `components/actions-to-process/ActionsToProcessView.tsx` — tabs shadcn/ui (3 tabs Admin, 2 tabs Manager)
+- `ProjectConfirmCard.tsx`, `WeekPlannerValidateCard.tsx`, `CommitteeActionOverdueCard.tsx`
+- `app/actions-to-process/page.tsx` — Server Component avec guard de rôle
 
-### Feature 18 — Rappels de Réunion
-- `app/api/cron/meeting-reminder/route.ts` — cron complet (stub → vraie logique)
-  - Requête Prisma : réunions avec `reminderSentAt: null` dans les 24h
-  - `notifyUser()` pour chaque membre, `reminderSentAt` mis à jour après batch
-  - Retourne `{ meetingsProcessed, membersNotified }`
+### Feature 29 — Actions à traiter — Logique
+- `app/actions-to-process/page.tsx` modifié : 3 requêtes Prisma réelles en `Promise.all`
+- Guard `if (role === "MANAGER" && !departmentId) redirect("/dashboard")` ajouté
+- Minuit UTC avec `new Date(Date.UTC(...))` pour comparaison fiable avec les dates PostgreSQL
+- Scope Manager — Week Planners : `user.team.managerId = userId` (équipe directe)
+- Scope Manager — Actions comité : `responsible.departmentId = departmentId` (département entier)
 
-### Feature 19 — Week Planner — UI complète (initialement)
-- `components/week-planner/types.ts` — types partagés (`PlannedDay`, `TaskStatus`, `PlannerStatus`, `MockWeekTask`, `MockWeekPlanner`, `MockProject`, `MockMember`)
-- `components/week-planner/TaskStatusBadge.tsx`
-- `components/week-planner/WeekStatusBanner.tsx` — prop `validatorLabel?: string` (défaut "votre manager")
-- `components/week-planner/AddTaskInline.tsx`
-- `components/week-planner/WeekTaskCard.tsx`
-- `components/week-planner/ManagerWeekPlannerView.tsx` — valide les Collaborateurs (liste + bouton jaune)
+### Feature 30 — Tableau de bord — UI complète
+- `components/dashboard/types.ts` — `KpiCard`, `BarChartItem`, `PieChartItem`, `ActivityItem`, `AdminProjectRow`, `ManagerTeamRow`, `CollaboratorKeyResultRow`, `DashboardData`
+- `lib/mock/dashboard.ts` — 3 exports mock typés (`MOCK_ADMIN_DASHBOARD`, `MOCK_MANAGER_DASHBOARD`, `MOCK_COLLABORATOR_DASHBOARD`)
+- `components/dashboard/StatsBar.tsx` — 4 KPI cards avec dot coloré + valeur 30px
+- `components/dashboard/DashboardCharts.tsx` — bar chart horizontal (avancement projets) + pie chart donut (statuts tâches), recharts "use client"
+- `components/dashboard/RecentActivity.tsx` — feed 5 événements avec icône par type et timestamp relatif
+- `components/dashboard/DashboardTable.tsx` — 3 tables contextuelles (Admin=projets à confirmer, Manager=état équipe, Collaborateur=résultats clés)
+- `components/dashboard/DashboardView.tsx` — orchestrateur "use client", filtre période (`useState`)
+- `app/dashboard/page.tsx` — remplace placeholder, sélection mock par rôle
 
-### Feature 19b — Manager a son propre Week Planner, validé par l'Admin (feature custom ajoutée)
-- `components/week-planner/ManagerWeekPlannerFullView.tsx` — 2 onglets : "Mon Planning" + "Mon Équipe"
-- `components/week-planner/AdminWeekPlannerView.tsx` — Admin valide les planners des Managers
-- `components/layout/Sidebar.tsx` — "Week Planner" ajouté dans `ADMIN_NAV`
-- `app/week-planner/page.tsx` — 3 branches : ADMIN → `AdminWeekPlannerView`, MANAGER → `ManagerWeekPlannerFullView`, COLLABORATOR → `CollaboratorWeekPlannerView`
-
-### Redesign Option A — Vue jour unique avec navigation
-**Remplace** la grille 5 colonnes + onglets "Ma semaine"/"Aujourd'hui" :
-- `components/week-planner/WeekDayBar.tsx` — 5 boutons-jours cliquables, date + compteur + point couleur
-- `components/week-planner/DayTaskPanel.tsx` — panneau unique par jour (planning si DRAFT, lecture si SUBMITTED, exécution si VALIDATED)
-- `components/week-planner/CollaboratorWeekPlannerView.tsx` — réécrit : week nav + WeekStatusBanner + WeekDayBar + DayTaskPanel
-- **Supprimés** : `WeekPlanningGrid.tsx`, `DailyExecutionView.tsx` (remplacés par le nouveau design)
+### Corrections appliquées cette session (review Feature 29)
+- `font-600` invalide en Tailwind v4 → `font-semibold` dans les 3 cards
+- Garde de rôle non exhaustive (`if (role === "COLLABORATOR")`) → `if (role !== "ADMIN" && role !== "MANAGER")`
+- Orphan S3 dans `uploadCertificate` → inner try/catch avec `deleteAttachments([s3Key])` compensatoire
+- Bypass `.trim()` dans `updateObjectiveSchema` → `.trim().min(1)` sur le champ `name`
+- `updateMyCommitteeActionStatus` utilisait un check inline au lieu de `requireRole()` → canonique
+- Double appel `auth()` dans `actions/objectives.ts` → `requireRole()` retourne maintenant `session.user`
 
 ## Décisions prises
 
-- **Flux de validation à 2 niveaux** (custom, hors build-plan original) :
-  - Collaborateur → SUBMITTED → Manager valide → VALIDATED
-  - Manager → SUBMITTED → Admin valide → VALIDATED
-  - Admin → valide uniquement, pas de planner propre
-- **`validatorLabel?: string`** sur `WeekStatusBanner` et `CollaboratorWeekPlannerView` — permet d'afficher "votre manager" (Collaborateur) ou "l'Administrateur" (Manager)
-- **`isEditable` vs `isExecutable`** dans `DayTaskPanel` : DRAFT seul = éditable (ajout/suppression tâches), VALIDATED seul = exécutable (statut/heures/commentaire), SUBMITTED = lecture seule
-- **`key={activeDay}`** sur `DayTaskPanel` — recrée le composant à chaque changement de jour pour réinitialiser l'état d'exécution local
-- **Semaines indépendantes** : naviguer vers une autre semaine reset le planner local à un DRAFT vide — seule la semaine courante (offset 0) montre le mock data initial
-- **MOCK_MEMBERS** : "Valentine Agbekodo" renommée en "Carine Hounkpatin" pour éviter la confusion avec le Manager connecté dans les tests
+- **`requireRole()` retourne `session.user`** (backward-compatible — les appelants qui ignorent le retour compilent toujours)
+- **3 requêtes indépendantes en `Promise.all`** dans `app/actions-to-process/page.tsx` — pattern à reproduire dans Feature 31
+- **Minuit UTC `new Date(Date.UTC(...))`** pour toute comparaison de dates avec PostgreSQL — `setHours(0,0,0,0)` banni (timezone local ≠ UTC)
+- **Guard `departmentId`** avant toute requête Prisma filtrée par département (Prisma ignore silencieusement les `undefined` dans un `where`)
+- **Dashboard layout** : `app/dashboard/layout.tsx` gère déjà `AppShell pageTitle="Tableau de bord"` — la page ne wrap pas AppShell elle-même
+- **Dashboard structure** : PeriodFilter → StatsBar (4 KPIs) → DashboardCharts (bar + pie) → RecentActivity → DashboardTable — même layout pour les 3 rôles, données différentes
+- **Tables contextuelles** : Admin = projets non confirmés, Manager = état équipe semaine en cours, Collaborateur = résultats clés en cours
+- **Filtre de période en Feature 30** : contrôle uniquement l'état UI (`useState`) — pas de changement de données mock — Feature 31 branchera les vraies requêtes avec la plage de dates
 
 ## Problèmes résolus
 
-- **SUBMITTED autorisait l'édition** : `isLocked = plannerStatus === "VALIDATED"` ne bloquait pas SUBMITTED → remplacé par `isEditable` (DRAFT) + `isExecutable` (VALIDATED)
-- **Tâches de la semaine courante visibles sur les autres semaines** : `planner` state non réinitialisé sur navigation → `handleChangeWeek` reset maintenant `planner` à un DRAFT vide pour tout offset ≠ 0
-- **Manager voyait son propre nom dans la liste de son équipe** : mock data `MOCK_MEMBERS` contenait "Valentine Agbekodo" (même nom que l'utilisateur connecté dans les tests) → renommé
+- **Timezone bug `dueDate: { lt: today }`** — `setHours(0,0,0,0)` donne minuit local, pas UTC. Sur serveur UTC+2, le filtre exclut les actions overdue qui devraient apparaître. Fixé avec `new Date(Date.UTC(...getUTC*...))`.
+- **`departmentId: undefined` dans Prisma `where`** — Prisma supprime silencieusement le filtre → Manager voit toutes les actions de l'organisation. Fixé par guard `redirect` avant la query.
+- **`font-600` Tailwind v4** — pas de classe utilitaire numérique pour font-weight. Silencieux, produit aucun CSS. Toujours utiliser `font-semibold`, `font-bold`, etc.
+- **Zod v4 + react-hook-form** → `zodResolver(schema) as unknown as Resolver<Output>` (cast structurel, déjà connu)
 
 ## État actuel
 
 - **Branch :** `dev`
-- **Features complètes :** 1–19b + redesign Option A (sur 32 au total)
-- **TypeScript :** 0 erreur — `npx tsc --noEmit` clean
-- **Tout en mock data** — aucun appel DB dans le Week Planner, tout est `MockWeekPlanner` / `MockMember`
-- **`WeekPlanningGrid.tsx` et `DailyExecutionView.tsx`** : supprimés
-- **Fichiers de contexte mis à jour** : `context/progress-tracker.md` (features 18, 19, 19b marquées complètes)
+- **Features complètes :** 1–30 (sur 32 au total)
+- **TypeScript :** 0 erreur
+- **Feature 31 — Tableau de bord — Logique** : terrain vierge — `lib/mock/dashboard.ts` prêt à être remplacé par de vraies requêtes Prisma dans `lib/dashboard-queries.ts` (fichier prévu dans l'architecture, pas encore créé)
+- **`context/progress-tracker.md`** : Feature 30 marquée complète, Feature 31 comme prochaine
 
 ## La prochaine session commencera par
 
-Lancer **`/architect feature 20`** — Planification hebdomadaire — Logique :
-- `getOrCreateWeekPlanner(weekStartDate)` — crée si inexistant (DRAFT) pour la semaine courante
-- `addWeekPlannerTask(plannerId, { title, projectId, plannedDay })` — ajoute une tâche
-- `deleteWeekPlannerTask(taskId)` — supprime une tâche (scope userId)
-- `submitWeekPlanner(plannerId)` — DRAFT → SUBMITTED
-- Brancher `CollaboratorWeekPlannerView` et `ManagerWeekPlannerFullView` sur les vraies Server Actions (remplacer mock data dans `page.tsx`)
-- Couvre Collaborateur ET Manager (deux flux identiques, même DB)
+Lancer **`/architect feature 31`** — Tableau de bord — Logique :
+- Remplacer les 3 imports mock par de vraies requêtes Prisma dans `app/dashboard/page.tsx`
+- Créer (ou remplir) `lib/dashboard-queries.ts` avec les fonctions de consolidation par rôle
+- Brancher le filtre de période sur les plages de dates réelles
+- KPIs calculés depuis : `WeekPlannerTask` (taux exécution), `Project` (avancement moyen), `CommitteeAction` (taux réalisation), `actions-to-process` count (actions à traiter)
+- Tables brancher : `Project.isConfirmed = false` (Admin), `WeekPlanner` équipe semaine en cours (Manager), `KeyResult` en cours (Collaborateur)
 
 ## Questions en suspens
 
-- Feature 21 (validation Manager + Admin) doit aussi implémenter le verrouillage des tâches via `prisma.$transaction` (décision déjà prise : atomique)
-- Feature 22 (exécution quotidienne) doit alimenter la table `TimeEntry` pour le Suivi ETP (Phase 6)
-- La navigation vers les semaines passées/futures en DB : décider si on charge depuis la DB à chaque `handleChangeWeek` ou si on utilise un Server Component séparé par semaine
+- **Performance Feature 31** : la build plan mentionne "≤ 3 secondes à 100 utilisateurs simultanés" — les requêtes de consolidation doivent être parallélisées (`Promise.all`) et les agrégations faites en Prisma (`_count`, `_avg`) plutôt qu'en mémoire
+- **`RecentActivity` Feature 31** : pas de table `Activity` dans le schéma Prisma. Options : (a) agréger depuis plusieurs tables existantes avec `orderBy createdAt desc`, (b) laisser en mock jusqu'à une décision produit. À trancher au moment de l'architecture
+- **Filtre période** : la semaine courante est définie par `Date.UTC(...)` — s'assurer que les bornes `weekStart` / `weekEnd` sont cohérentes avec `WeekPlanner.weekStartDate` (lundi) et `weekEndDate` (vendredi)

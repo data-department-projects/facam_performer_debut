@@ -9,7 +9,7 @@ type Props = {
 
 export function TopBar({ pageTitle, userName, userRole }: Props) {
   return (
-    <header className="flex h-14 items-center justify-between border-b border-gray200 bg-facamWhite px-6">
+    <header className="flex h-14 items-center justify-between border-b border-gray200 bg-facamWhite pl-14 pr-6 lg:pl-6">
       <h1 className="text-base font-semibold text-facamDark">{pageTitle}</h1>
 
       <div className="flex items-center gap-3">

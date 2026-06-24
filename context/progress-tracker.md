@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 7 — Objectifs (features 25–27)
-**Last completed:** Feature 24 — Suivi ETP & Temps — Logique (2026-06-22) — `lib/dashboard-queries.ts` (`getEtpData` + types EtpEntry/TeamCharge), `lib/reports/csv-export.ts` (`rowsToCsv`), `lib/reports/etp-report.tsx` (PDF @react-pdf/renderer), routes `/api/reports/etp` et `/api/reports/etp/csv`, filtre période connecté à la DB via searchParam URL, exports PDF/CSV téléchargeables
-**Next:** Feature 25 — Objectifs individuels — UI complète
+**Phase:** TERMINÉ — Toutes les features (1–32) sont implémentées.
+**Last completed:** Feature 32 — Guide utilisateur & Remontée de bugs — UI & Logique (2026-06-23) — `app/help/page.tsx`, `components/help/HelpView.tsx` ("use client", assemblage FAQ + formulaire), `components/help/FaqSection.tsx` (accordéon `<details>/<summary>`, contenu statique par rôle Admin/Manager/Collaborateur/Intern), `components/help/BugReportForm.tsx` (react-hook-form + Zod), `actions/bugReports.ts` (submitBugReport — DB insert + email Resend), `lib/schemas/bugReport.ts`, `lib/email.ts` (template bug-report), `.env.example` (SUPPORT_EMAIL)
+**Next:** Aucune feature restante — projet complet.
 
 ---
 
@@ -59,23 +59,23 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 7 — Objectifs
 
-- [ ] 25 Objectifs individuels — UI complète (type, résultats clés, risques)
-- [ ] 26 Objectifs individuels — Logique (CRUD résultats clés, preuve/certificat)
-- [ ] 27 Objectifs Départements — UI & Logique
+- [x] 25 Objectifs individuels — UI complète (2026-06-23) — drawer latéral, ObjectiveFormModal, AddKeyResultModal, KeyResultUpdateModal, ObjectiveDrawer, CollaboratorObjectivesView, ManagerObjectivesView, page avec branching par rôle
+- [x] 26 Objectifs individuels — Logique (2026-06-23) — 7 Server Actions (createObjective, updateObjective, deleteObjective, addKeyResult, updateKeyResultProgress, deleteKeyResult, uploadCertificate), S3 via deleteAttachments(), page câblée DB, types nettoyés (mock supprimé)
+- [x] 27 Objectifs Départements — UI & Logique (2026-06-23) — vue agrégée par département, agrégation KRs on-the-fly, ADMIN = tous départements, MANAGER = son département, readonly
 
 ### Phase 8 — Actions à traiter
 
-- [ ] 28 Actions à traiter — UI complète
-- [ ] 29 Actions à traiter — Logique
+- [x] 28 Actions à traiter — UI complète (2026-06-23)
+- [x] 29 Actions à traiter — Logique (2026-06-23)
 
 ### Phase 9 — Tableau de bord
 
-- [ ] 30 Tableau de bord — UI complète
-- [ ] 31 Tableau de bord — Logique
+- [x] 30 Tableau de bord — UI complète (2026-06-23)
+- [x] 31 Tableau de bord — Logique (2026-06-23)
 
 ### Phase 10 — Accueil / Guide / Support
 
-- [ ] 32 Guide utilisateur & Remontée de bugs — UI & Logique
+- [x] 32 Guide utilisateur & Remontée de bugs — UI & Logique (2026-06-23)
 
 ---
 

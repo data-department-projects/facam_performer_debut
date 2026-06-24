@@ -18,6 +18,7 @@ export default async function CommitteeDetailPage({ params }: Props) {
   if (!session?.user) redirect("/login");
 
   const role = session.user.role;
+  const userId = session.user.id ?? "";
   const canManage = role === "ADMIN" || role === "MANAGER";
 
   const dbCommittee = await prisma.committee.findUnique({
@@ -26,6 +27,11 @@ export default async function CommitteeDetailPage({ params }: Props) {
   });
 
   if (!dbCommittee) notFound();
+
+  if (role === "COLLABORATOR" || role === "INTERN") {
+    const isMember = dbCommittee.members.some((m) => m.userId === userId);
+    if (!isMember) redirect("/committees");
+  }
 
   const committee = toMockCommittee(dbCommittee);
 

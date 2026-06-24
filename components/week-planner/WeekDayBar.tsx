@@ -19,7 +19,7 @@ type Props = {
 
 function getDotColor(tasks: MockWeekTask[], isActive: boolean): string | null {
   if (tasks.length === 0) return null;
-  if (isActive) return "bg-white/60";
+  if (isActive) return "bg-facamWhite/60";
   if (tasks.some((t) => t.status === "NOT_DONE")) return "bg-error";
   if (tasks.some((t) => t.status === "IN_PROGRESS")) return "bg-warning";
   if (tasks.every((t) => t.status === "DONE")) return "bg-success";
@@ -56,7 +56,7 @@ export function WeekDayBar({ activeDay, weekMonday, tasksByDay, onSelectDay }: P
             <span className="text-xl font-bold leading-none">{date.getDate()}</span>
             <div className="flex h-4 items-center gap-1">
               {dotColor && <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${dotColor}`} />}
-              <span className={`text-[10px] leading-none ${isActive ? "text-white/70" : "text-gray400"}`}>
+              <span className={`text-[10px] leading-none ${isActive ? "text-facamWhite/70" : "text-gray400"}`}>
                 {tasks.length > 0 ? tasks.length : "—"}
               </span>
             </div>

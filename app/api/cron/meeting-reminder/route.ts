@@ -46,27 +46,32 @@ export async function GET(req: NextRequest) {
       const formattedTime = meeting.startDateTime.toISOString().slice(11, 16);
       const committeeName = meeting.committee.name;
 
-      for (const member of meeting.committee.members) {
-        await notifyUser(member.userId, {
-          title: "Rappel de réunion",
-          body: `Réunion "${committeeName}" demain à ${formattedTime}`,
-          url: "/committees",
-          emailTemplate: "meeting-reminder",
-          emailData: {
-            committeeName,
-            meetingDate: formattedDate,
-            meetingTime: formattedTime,
-            ...(meeting.meetingLink ? { meetingLink: meeting.meetingLink } : {}),
-          },
-        });
-        membersNotified++;
-      }
-
+      // Marquer en premier pour éviter les doublons si une notification échoue
       await prisma.committeeMeeting.update({
         where: { id: meeting.id },
         data: { reminderSentAt: new Date() },
       });
       meetingsProcessed++;
+
+      for (const member of meeting.committee.members) {
+        try {
+          await notifyUser(member.userId, {
+            title: "Rappel de réunion",
+            body: `Réunion "${committeeName}" demain à ${formattedTime}`,
+            url: "/committees",
+            emailTemplate: "meeting-reminder",
+            emailData: {
+              committeeName,
+              meetingDate: formattedDate,
+              meetingTime: formattedTime,
+              ...(meeting.meetingLink ? { meetingLink: meeting.meetingLink } : {}),
+            },
+          });
+          membersNotified++;
+        } catch (memberError) {
+          console.error(`[cron/meeting-reminder] membre ${member.userId}`, memberError);
+        }
+      }
     } catch (error) {
       console.error(`[cron/meeting-reminder] réunion ${meeting.id}`, error);
     }

@@ -26,9 +26,9 @@ export async function createWeekPlanner(
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
   try {
-    const start = new Date(parsed.data.weekStartDate + "T00:00:00");
-    const end = new Date(start);
-    end.setDate(start.getDate() + 4);
+    const [y, mo, dy] = parsed.data.weekStartDate.split("-").map(Number);
+    const start = new Date(Date.UTC(y, mo - 1, dy));
+    const end = new Date(Date.UTC(y, mo - 1, dy + 4));
 
     const planner = await prisma.weekPlanner.create({
       data: {
@@ -153,7 +153,11 @@ export async function validateWeekPlanner(
       if (!["COLLABORATOR", "INTERN"].includes(planner.user.role)) {
         return { success: false, error: "Vous ne pouvez valider que les planners de collaborateurs et stagiaires" };
       }
-      if (planner.user.departmentId !== session.user.departmentId) {
+      if (
+        !session.user.departmentId ||
+        !planner.user.departmentId ||
+        planner.user.departmentId !== session.user.departmentId
+      ) {
         return { success: false, error: "Ce planning n'appartient pas à votre département" };
       }
     }
@@ -192,6 +196,10 @@ export async function submitWeekPlanner(
 ): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Non authentifié" };
+
+  if (session.user.role === "ADMIN") {
+    return { success: false, error: "Les administrateurs ne soumettent pas de planning." };
+  }
 
   const parsed = submitPlannerSchema.safeParse({ plannerId });
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };

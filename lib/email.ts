@@ -18,7 +18,8 @@ export type EmailTemplate =
   | "credentials"
   | "daily-reminder"
   | "weekly-reminder"
-  | "meeting-reminder";
+  | "meeting-reminder"
+  | "bug-report";
 
 function subjectFor(template: EmailTemplate): string {
   switch (template) {
@@ -32,6 +33,8 @@ function subjectFor(template: EmailTemplate): string {
       return "Planifiez votre semaine prochaine — FACAM PERFORMER";
     case "meeting-reminder":
       return "Rappel de réunion demain — FACAM PERFORMER";
+    case "bug-report":
+      return "Nouveau bug signalé — FACAM PERFORMER";
   }
 }
 
@@ -64,6 +67,15 @@ function renderTemplate(
         meetingTime: data.meetingTime ?? "",
         meetingLink: data.meetingLink,
       });
+    case "bug-report":
+      return `<!DOCTYPE html><html><body style="font-family:sans-serif;color:#1a1a1a;padding:24px">
+        <h2 style="color:#003f7f">Nouveau bug signalé</h2>
+        <p><strong>${data.fullName ?? "Inconnu"}</strong> — ${data.role ?? ""} — a signalé un problème :</p>
+        <blockquote style="border-left:4px solid #003f7f;padding:8px 16px;margin:16px 0;background:#f5f5f5">
+          ${data.description ?? ""}
+        </blockquote>
+        <p style="color:#666;font-size:13px">Soumis le ${data.submittedAt ?? ""}</p>
+      </body></html>`;
   }
 }
 

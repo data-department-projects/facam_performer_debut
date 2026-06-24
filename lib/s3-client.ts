@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { S3_SIGNED_URL_EXPIRY_SECONDS } from "@/lib/constants";
 
@@ -63,4 +63,14 @@ export function buildKeyResultKey(
   fileName: string,
 ): string {
   return `key-results/${keyResultId}/${fileName}`;
+}
+
+export async function deleteAttachments(s3Keys: string[]): Promise<void> {
+  if (s3Keys.length === 0) return;
+  await getS3Client().send(
+    new DeleteObjectsCommand({
+      Bucket: getBucket(),
+      Delete: { Objects: s3Keys.map((Key) => ({ Key })) },
+    }),
+  );
 }
