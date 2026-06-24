@@ -6,10 +6,11 @@ import type { Role } from "@/app/generated/prisma/client";
 const ADMIN_NAV: NavItem[] = [
   { label: "Tableau de bord", href: "/dashboard", iconName: "LayoutDashboard" },
   { label: "Organigramme", href: "/org-chart", iconName: "GitBranch" },
-  { label: "Projets & Comités", href: "/projects", iconName: "FolderKanban" },
+  { label: "Projets", href: "/projects", iconName: "FolderKanban" },
+  { label: "Comités", href: "/committees", iconName: "Building2" },
   { label: "Week Planner", href: "/week-planner", iconName: "CalendarDays" },
   { label: "Suivi ETP & Temps", href: "/etp-tracking", iconName: "Clock" },
-  { label: "Objectifs dép.", href: "/department-objectives", iconName: "Building2" },
+  { label: "Objectifs dép.", href: "/department-objectives", iconName: "Target" },
   { label: "Administration", href: "/admin", iconName: "Users" },
   { label: "Actions à traiter", href: "/actions-to-process", iconName: "CheckSquare" },
   { label: "Guide / Bugs", href: "/help", iconName: "HelpCircle" },
@@ -18,7 +19,8 @@ const ADMIN_NAV: NavItem[] = [
 const MANAGER_NAV: NavItem[] = [
   { label: "Tableau de bord", href: "/dashboard", iconName: "LayoutDashboard" },
   { label: "Organigramme", href: "/org-chart", iconName: "GitBranch" },
-  { label: "Projets & Comités", href: "/projects", iconName: "FolderKanban" },
+  { label: "Projets", href: "/projects", iconName: "FolderKanban" },
+  { label: "Comités", href: "/committees", iconName: "Building2" },
   { label: "Week Planner", href: "/week-planner", iconName: "CalendarDays" },
   { label: "Objectifs", href: "/objectives", iconName: "Target" },
   { label: "Actions à traiter", href: "/actions-to-process", iconName: "CheckSquare" },
@@ -51,6 +53,8 @@ type Props = {
   userName: string;
 };
 
+export { getNavItems };
+
 export function Sidebar({ role, userName }: Props) {
   const navItems = getNavItems(role);
   const roleLabel =
@@ -63,7 +67,7 @@ export function Sidebar({ role, userName }: Props) {
           : "Collaborateur";
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-[260px] flex-col bg-facamBlue">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[260px] flex-col bg-facamBlue lg:flex">
       {/* Logo */}
       <div className="flex items-center justify-center border-b border-white/10 px-5 py-4">
         <Image

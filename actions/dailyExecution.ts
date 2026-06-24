@@ -12,7 +12,7 @@ type ActionResult<T = void> =
 export async function updateTaskExecution(input: {
   taskId: string;
   status: "STARTED" | "IN_PROGRESS" | "DONE" | "NOT_DONE";
-  hoursSpent: number;
+  hoursSpent: number | null;
   comment: string;
 }): Promise<ActionResult> {
   const session = await auth();
@@ -53,27 +53,31 @@ export async function updateTaskExecution(input: {
         data: { status, comment: comment.trim() || null },
       });
 
-      if (hoursSpent > 0) {
+      if (hoursSpent !== null) {
         const existing = await tx.timeEntry.findFirst({
           where: { userId: session.user.id, weekPlannerTaskId: taskId, date: todayUTC },
           select: { id: true },
         });
 
-        if (existing) {
-          await tx.timeEntry.update({
-            where: { id: existing.id },
-            data: { hoursSpent, activityLabel: task.title },
-          });
-        } else {
-          await tx.timeEntry.create({
-            data: {
-              userId: session.user.id,
-              weekPlannerTaskId: taskId,
-              date: todayUTC,
-              hoursSpent,
-              activityLabel: task.title,
-            },
-          });
+        if (hoursSpent > 0) {
+          if (existing) {
+            await tx.timeEntry.update({
+              where: { id: existing.id },
+              data: { hoursSpent, activityLabel: task.title },
+            });
+          } else {
+            await tx.timeEntry.create({
+              data: {
+                userId: session.user.id,
+                weekPlannerTaskId: taskId,
+                date: todayUTC,
+                hoursSpent,
+                activityLabel: task.title,
+              },
+            });
+          }
+        } else if (existing) {
+          await tx.timeEntry.delete({ where: { id: existing.id } });
         }
       }
 

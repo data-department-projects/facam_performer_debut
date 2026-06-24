@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import type { Role } from "@/app/generated/prisma/client";
 
-export async function requireRole(allowed: Role[]): Promise<void> {
+export async function requireRole(allowed: Role[]) {
   const session = await auth();
 
   if (!session?.user) {
@@ -11,6 +11,8 @@ export async function requireRole(allowed: Role[]): Promise<void> {
   if (!allowed.includes(session.user.role as Role)) {
     throw new Error("Accès non autorisé");
   }
+
+  return session.user;
 }
 
 export async function getSession() {

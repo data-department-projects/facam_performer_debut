@@ -9,7 +9,7 @@ export default async function ProjectsLayout({ children }: Props) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  if (session.user.role === "COLLABORATOR" || session.user.role === "INTERN") redirect("/dashboard");
+  // Tous les rôles peuvent accéder à /projects (chacun voit sa vue dédiée)
 
   return <>{children}</>;
 }

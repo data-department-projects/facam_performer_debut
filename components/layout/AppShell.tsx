@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { Sidebar, getNavItems } from "@/components/layout/Sidebar";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { TopBar } from "@/components/layout/TopBar";
 import { NotificationPermissionPrompt } from "@/components/notifications/NotificationPermissionPrompt";
 import type { Role } from "@/app/generated/prisma/client";
@@ -25,7 +26,9 @@ export async function AppShell({ children, pageTitle, requireAdmin = false }: Pr
       ? "Administrateur"
       : role === "MANAGER"
         ? "Manager"
-        : "Collaborateur";
+        : role === "INTERN"
+          ? "Stagiaire"
+          : "Collaborateur";
 
   const userRecord = await prisma.user.findUnique({
     where: { id: userId },
@@ -33,17 +36,25 @@ export async function AppShell({ children, pageTitle, requireAdmin = false }: Pr
   });
 
   const showNotificationPrompt = userRecord?.notificationConsent === "NOT_ASKED";
+  const navItems = getNavItems(role as Role);
+  const userName = name ?? "Utilisateur";
 
   return (
-    <div className="flex min-h-screen bg-facamBlueTint">
-      <Sidebar role={role as Role} userName={name ?? "Utilisateur"} />
-      <div className="ml-[260px] flex flex-1 flex-col">
+    <div className="flex min-h-screen overflow-x-hidden bg-facamBlueTint">
+      {/* Desktop sidebar */}
+      <Sidebar role={role as Role} userName={userName} />
+
+      {/* Mobile drawer + hamburger button */}
+      <MobileNav navItems={navItems} userName={userName} roleLabel={roleLabel} />
+
+      {/* Main content */}
+      <div className="flex flex-1 flex-col lg:ml-[260px]">
         <TopBar
           pageTitle={pageTitle}
-          userName={name ?? "Utilisateur"}
+          userName={userName}
           userRole={roleLabel}
         />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
           {showNotificationPrompt && <NotificationPermissionPrompt />}
           {children}
         </main>

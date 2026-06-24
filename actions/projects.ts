@@ -142,6 +142,20 @@ export async function createProjectExpense(
       return { success: false, error: "Accès non autorisé." };
     }
 
+    if (currentUser.role === "MANAGER") {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: {
+          projectManagerId: true,
+          teamMembers: { select: { userId: true } },
+        },
+      });
+      const isOwner =
+        project?.projectManagerId === currentUser.id ||
+        project?.teamMembers.some((m) => m.userId === currentUser.id);
+      if (!isOwner) return { success: false, error: "Accès non autorisé." };
+    }
+
     const parsed = projectExpenseSchema.safeParse(rawData);
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0].message };
@@ -174,7 +188,24 @@ export async function deleteProjectExpense(
   projectId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireRole(["ADMIN", "MANAGER"]);
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !["ADMIN", "MANAGER"].includes(currentUser.role as Role)) {
+      return { success: false, error: "Accès non autorisé." };
+    }
+
+    if (currentUser.role === "MANAGER") {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: {
+          projectManagerId: true,
+          teamMembers: { select: { userId: true } },
+        },
+      });
+      const isOwner =
+        project?.projectManagerId === currentUser.id ||
+        project?.teamMembers.some((m) => m.userId === currentUser.id);
+      if (!isOwner) return { success: false, error: "Accès non autorisé." };
+    }
 
     await prisma.projectExpense.delete({ where: { id: expenseId } });
 
@@ -205,7 +236,7 @@ export async function updateMyTaskProgress(
       return { success: false, error: "Tâche introuvable ou accès refusé." };
     }
 
-    if (!Number.isInteger(progressPercent) || progressPercent < 0 || progressPercent > 100) {
+    if (![0, 25, 50, 75, 100].includes(progressPercent)) {
       return { success: false, error: "L'avancement doit être 0, 25, 50, 75 ou 100." };
     }
 
