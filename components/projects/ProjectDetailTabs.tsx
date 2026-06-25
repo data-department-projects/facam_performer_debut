@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Pencil, X } from "lucide-react";
 import { ProjectFicheView, type MockProjectDetail } from "@/components/projects/ProjectFicheView";
 import {
   ProjectGanttView,
@@ -10,8 +12,13 @@ import {
 import { ProjectMilestonesList, type MockMilestone } from "@/components/projects/ProjectMilestonesList";
 import { ProjectConfirmationPanel } from "@/components/projects/ProjectConfirmationPanel";
 import { ProjectExpensesList, type ProjectExpense } from "@/components/projects/ProjectExpensesList";
+import { ProjectForm } from "@/components/projects/ProjectForm";
+import type { ProjectInput } from "@/lib/schemas/project";
 
 type Tab = "fiche" | "gantt" | "jalons" | "finances";
+
+type UserOption = { id: string; fullName: string };
+type DepartmentOption = { id: string; name: string };
 
 type Props = {
   project: MockProjectDetail;
@@ -25,10 +32,21 @@ type Props = {
   currentUserId: string;
   confirmedAt?: string;
   confirmedByName?: string;
+  canEditFiche?: boolean;
+  editDefaultValues?: ProjectInput;
+  users?: UserOption[];
+  departments?: DepartmentOption[];
 };
 
-export function ProjectDetailTabs({ project, milestones, expenses, ganttTasks, teamMembersForGantt, projectId, isEditable, isAdmin, currentUserId, confirmedAt, confirmedByName }: Props) {
+export function ProjectDetailTabs({ project, milestones, expenses, ganttTasks, teamMembersForGantt, projectId, isEditable, isAdmin, currentUserId, confirmedAt, confirmedByName, canEditFiche, editDefaultValues, users, departments }: Props) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("fiche");
+  const [editing, setEditing] = useState(false);
+
+  function handleEditSuccess() {
+    setEditing(false);
+    router.refresh();
+  }
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "fiche", label: "Fiche projet" },
@@ -69,7 +87,46 @@ export function ProjectDetailTabs({ project, milestones, expenses, ganttTasks, t
       </div>
 
       {/* Contenu */}
-      {activeTab === "fiche" && <ProjectFicheView project={project} />}
+      {activeTab === "fiche" && (
+        editing && canEditFiche && editDefaultValues && users && departments ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-facamDark">Modifier la fiche projet</h2>
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray200 bg-facamWhite px-3 py-1.5 text-sm text-gray600 hover:bg-gray50 transition-colors"
+              >
+                <X size={14} />
+                Annuler
+              </button>
+            </div>
+            <ProjectForm
+              users={users}
+              departments={departments}
+              projectId={projectId}
+              defaultValues={editDefaultValues}
+              onSuccess={handleEditSuccess}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {canEditFiche && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-facamBlue px-4 py-2 text-sm font-medium text-facamWhite hover:bg-facamBlueMid transition-colors"
+                >
+                  <Pencil size={14} />
+                  Modifier la fiche
+                </button>
+              </div>
+            )}
+            <ProjectFicheView project={project} />
+          </div>
+        )
+      )}
       {activeTab === "gantt" && (
         <ProjectGanttView
           projectId={projectId}

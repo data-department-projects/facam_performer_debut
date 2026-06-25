@@ -1,81 +1,68 @@
-# Mémoire — Features 1→30 complètes, prochaine : Feature 31
+# Mémoire — Toutes les features complètes (1–32), code review & lint clean
 
-Dernière mise à jour : 2026-06-23
+Dernière mise à jour : 2026-06-24
 
 ## Ce qui a été créé
 
-### Features 1–27 (acquis de la session précédente)
-Tout le socle est en place : auth, emails, schéma DB, S3, push VAPID, organigramme, administration, projets + Gantt, comités, vues Collaborateur, rappels de réunion, Week Planner complet (UI + Logique), Suivi ETP (UI + Logique), Objectifs individuels + Résultats clés (UI + Logique), Objectifs Départements.
+### Features 1–32 (projet entièrement terminé)
+Le projet FACAM PERFORMER est complet. Toutes les features sont implémentées — voir `context/progress-tracker.md` pour le détail complet feature par feature.
 
-### Feature 28 — Actions à traiter — UI complète
-- `components/actions-to-process/types.ts` — types partagés (`PendingProject`, `PendingWeekPlanner`, `OverdueCommitteeAction`, `ActionsToProcessData`)
-- `lib/mock/actions-to-process.ts` — mock data typée
-- `components/actions-to-process/ActionsToProcessView.tsx` — tabs shadcn/ui (3 tabs Admin, 2 tabs Manager)
-- `ProjectConfirmCard.tsx`, `WeekPlannerValidateCard.tsx`, `CommitteeActionOverdueCard.tsx`
-- `app/actions-to-process/page.tsx` — Server Component avec guard de rôle
+### Corrections de code review appliquées cette session (8 bugs)
 
-### Feature 29 — Actions à traiter — Logique
-- `app/actions-to-process/page.tsx` modifié : 3 requêtes Prisma réelles en `Promise.all`
-- Guard `if (role === "MANAGER" && !departmentId) redirect("/dashboard")` ajouté
-- Minuit UTC avec `new Date(Date.UTC(...))` pour comparaison fiable avec les dates PostgreSQL
-- Scope Manager — Week Planners : `user.team.managerId = userId` (équipe directe)
-- Scope Manager — Actions comité : `responsible.departmentId = departmentId` (département entier)
+- **`app/projects/[id]/page.tsx`** — import `redirect` manquant (build fix)
+- **`app/committees/[id]/page.tsx`** — guard COLLABORATOR : vérification d'appartenance au comité avant affichage
+- **`actions/projects.ts` — `deleteProjectExpense`** — IDOR corrigé : ajout du check de propriété MANAGER (même pattern que `createProjectExpense`)
+- **`actions/projects.ts` — `updateMyTaskProgress`** — validation changée : accepte uniquement `[0, 25, 50, 75, 100]`
+- **`app/api/cron/meeting-reminder/route.ts`** — `reminderSentAt` mis à jour AVANT la boucle membres (idempotence) ; chaque envoi membre dans son propre try/catch
+- **`components/week-planner/WeekDayBar.tsx`** — tokens Tailwind v4 invalides corrigés : `bg-white/60` → `bg-facamWhite/60`, `text-white/70` → `text-facamWhite/70`
+- **`actions/weekPlanner.ts` — `createWeekPlanner`** — dates UTC via `Date.UTC()` au lieu de `new Date(str + "T00:00:00")` (bug timezone)
+- **`actions/weekPlanner.ts` — `validateWeekPlanner`** — guard `departmentId` null avant comparaison (Prisma ignore silencieusement `undefined` dans `where`)
+- **`actions/weekPlanner.ts` — `submitWeekPlanner`** — ADMIN bloqué (aucun validateur disponible pour son planning → resterait en SUBMITTED indéfiniment)
+- **`actions/dailyExecution.ts`** — `hoursSpent: number | null` : `null` = ne pas toucher le TimeEntry, `0` = supprimer, `>0` = upsert ; logique TimeEntry encapsulée dans `if (hoursSpent !== null)`
+- **`components/week-planner/DayTaskPanel.tsx`** — `hoursSpent: null` envoyé quand le champ heures est vide (évite la suppression silencieuse du TimeEntry à chaque re-sauvegarde)
+- **`lib/schemas/weekPlanner.ts`** — `updateTaskExecutionSchema` accepte `z.union([z.null(), z.number()])` ; `createPlannerSchema` valide que la date est un lundi via `.refine()`
+- **`app/week-planner/page.tsx`** — `getCurrentWeekMonday()` utilise `getUTCDay()`/`Date.UTC` ; param `?week` validé par regex `^\d{4}-\d{2}-\d{2}$` ; guard `if (!session.user.departmentId) redirect("/dashboard")` avant la query MANAGER
+- **`lib/dashboard-queries.ts`** — INTERN inclus dans le dénominateur `availableHours` : `role: { in: ["COLLABORATOR", "INTERN"] }` (était seulement `"COLLABORATOR"`)
 
-### Feature 30 — Tableau de bord — UI complète
-- `components/dashboard/types.ts` — `KpiCard`, `BarChartItem`, `PieChartItem`, `ActivityItem`, `AdminProjectRow`, `ManagerTeamRow`, `CollaboratorKeyResultRow`, `DashboardData`
-- `lib/mock/dashboard.ts` — 3 exports mock typés (`MOCK_ADMIN_DASHBOARD`, `MOCK_MANAGER_DASHBOARD`, `MOCK_COLLABORATOR_DASHBOARD`)
-- `components/dashboard/StatsBar.tsx` — 4 KPI cards avec dot coloré + valeur 30px
-- `components/dashboard/DashboardCharts.tsx` — bar chart horizontal (avancement projets) + pie chart donut (statuts tâches), recharts "use client"
-- `components/dashboard/RecentActivity.tsx` — feed 5 événements avec icône par type et timestamp relatif
-- `components/dashboard/DashboardTable.tsx` — 3 tables contextuelles (Admin=projets à confirmer, Manager=état équipe, Collaborateur=résultats clés)
-- `components/dashboard/DashboardView.tsx` — orchestrateur "use client", filtre période (`useState`)
-- `app/dashboard/page.tsx` — remplace placeholder, sélection mock par rôle
+### Corrections ESLint appliquées (3 problèmes → 0)
 
-### Corrections appliquées cette session (review Feature 29)
-- `font-600` invalide en Tailwind v4 → `font-semibold` dans les 3 cards
-- Garde de rôle non exhaustive (`if (role === "COLLABORATOR")`) → `if (role !== "ADMIN" && role !== "MANAGER")`
-- Orphan S3 dans `uploadCertificate` → inner try/catch avec `deleteAttachments([s3Key])` compensatoire
-- Bypass `.trim()` dans `updateObjectiveSchema` → `.trim().min(1)` sur le champ `name`
-- `updateMyCommitteeActionStatus` utilisait un check inline au lieu de `requireRole()` → canonique
-- Double appel `auth()` dans `actions/objectives.ts` → `requireRole()` retourne maintenant `session.user`
+- **`components/help/BugReportForm.tsx:41`** — `l'équipe` → `l&apos;équipe` (react/no-unescaped-entities)
+- **`components/help/HelpView.tsx:17`** — `d'utilisation` → `d&apos;utilisation` (react/no-unescaped-entities)
+- **`components/projects/GanttTaskFormModal.tsx:69`** — `watch("dependsOnIds")` → `useWatch({ control, name: "dependsOnIds" })` ; import `useWatch` ajouté, `watch` remplacé par `control` dans la destructure `useForm` (react-hooks/incompatible-library — React Compiler)
 
 ## Décisions prises
 
-- **`requireRole()` retourne `session.user`** (backward-compatible — les appelants qui ignorent le retour compilent toujours)
-- **3 requêtes indépendantes en `Promise.all`** dans `app/actions-to-process/page.tsx` — pattern à reproduire dans Feature 31
-- **Minuit UTC `new Date(Date.UTC(...))`** pour toute comparaison de dates avec PostgreSQL — `setHours(0,0,0,0)` banni (timezone local ≠ UTC)
-- **Guard `departmentId`** avant toute requête Prisma filtrée par département (Prisma ignore silencieusement les `undefined` dans un `where`)
-- **Dashboard layout** : `app/dashboard/layout.tsx` gère déjà `AppShell pageTitle="Tableau de bord"` — la page ne wrap pas AppShell elle-même
-- **Dashboard structure** : PeriodFilter → StatsBar (4 KPIs) → DashboardCharts (bar + pie) → RecentActivity → DashboardTable — même layout pour les 3 rôles, données différentes
-- **Tables contextuelles** : Admin = projets non confirmés, Manager = état équipe semaine en cours, Collaborateur = résultats clés en cours
-- **Filtre de période en Feature 30** : contrôle uniquement l'état UI (`useState`) — pas de changement de données mock — Feature 31 branchera les vraies requêtes avec la plage de dates
+- **`hoursSpent: null` comme sentinelle** — `null` = l'utilisateur n'a pas touché le champ heures → ne pas modifier le TimeEntry existant. `0` = effacement explicite. Évite la suppression accidentelle lors de re-sauvegardes sans modifier les heures.
+- **UTC partout pour les dates de planner** — `getCurrentWeekMonday()`, `createWeekPlanner`, `createPlannerSchema` refine, et les lookups Prisma utilisent tous `Date.UTC()`/`getUTC*()`. `setHours(0,0,0,0)` est banni (timezone local ≠ UTC sur serveur).
+- **Prisma `where: { field: undefined }` = fuite de données** — un `departmentId` undefined dans un filtre Prisma supprime silencieusement le filtre, exposant des données d'autres départements. Toujours garder avec `redirect` avant la query.
+- **`useWatch` au lieu de `watch()` dans les composants memoïsés** — `watch()` retourné par `useForm()` ne peut pas être memoïsé par le React Compiler. Utiliser `useWatch({ control, name })` à la place.
 
 ## Problèmes résolus
 
-- **Timezone bug `dueDate: { lt: today }`** — `setHours(0,0,0,0)` donne minuit local, pas UTC. Sur serveur UTC+2, le filtre exclut les actions overdue qui devraient apparaître. Fixé avec `new Date(Date.UTC(...getUTC*...))`.
-- **`departmentId: undefined` dans Prisma `where`** — Prisma supprime silencieusement le filtre → Manager voit toutes les actions de l'organisation. Fixé par guard `redirect` avant la query.
-- **`font-600` Tailwind v4** — pas de classe utilitaire numérique pour font-weight. Silencieux, produit aucun CSS. Toujours utiliser `font-semibold`, `font-bold`, etc.
-- **Zod v4 + react-hook-form** → `zodResolver(schema) as unknown as Resolver<Output>` (cast structurel, déjà connu)
+- **Suppression silencieuse de TimeEntry** — `DayTaskPanel` initialisait `hours: ""` mais le formulaire envoyait `parseFloat("") || 0 = 0` → le TimeEntry était supprimé à chaque sauvegarde sans que l'utilisateur ait touché le champ. Résolu via sentinelle `null`.
+- **IDOR sur `deleteProjectExpense`** — un Manager pouvait supprimer les dépenses de n'importe quel projet. Résolu avec le même check de propriété que `createProjectExpense`.
+- **Bug de timezone `getCurrentWeekMonday()`** — sur un serveur UTC+1/UTC+2, `toISOString()` après `setHours(0,0,0,0)` émettait la date du dimanche précédent. Résolu avec `getUTCDay()` + `Date.UTC()`.
+- **`?week=abc` → crash Prisma** — param non validé passait directement dans `new Date()` → `Invalid Date` → Prisma lançait une erreur 500. Résolu avec validation regex.
+- **INTERN exclu du dénominateur ETP** — le taux d'occupation était surestimé (numérateur incluait les INTERN, dénominateur non). Corrigé.
 
 ## État actuel
 
 - **Branch :** `dev`
-- **Features complètes :** 1–30 (sur 32 au total)
-- **TypeScript :** 0 erreur
-- **Feature 31 — Tableau de bord — Logique** : terrain vierge — `lib/mock/dashboard.ts` prêt à être remplacé par de vraies requêtes Prisma dans `lib/dashboard-queries.ts` (fichier prévu dans l'architecture, pas encore créé)
-- **`context/progress-tracker.md`** : Feature 30 marquée complète, Feature 31 comme prochaine
+- **Features complètes :** 1–32 (toutes — projet entièrement terminé)
+- **`npm run build` :** 0 erreur TypeScript ✅
+- **`npm run lint` :** 0 erreur, 0 warning ✅
+- **Pas de dette technique connue** — tous les bugs trouvés par les 2 passes de code review sont corrigés
 
 ## La prochaine session commencera par
 
-Lancer **`/architect feature 31`** — Tableau de bord — Logique :
-- Remplacer les 3 imports mock par de vraies requêtes Prisma dans `app/dashboard/page.tsx`
-- Créer (ou remplir) `lib/dashboard-queries.ts` avec les fonctions de consolidation par rôle
-- Brancher le filtre de période sur les plages de dates réelles
-- KPIs calculés depuis : `WeekPlannerTask` (taux exécution), `Project` (avancement moyen), `CommitteeAction` (taux réalisation), `actions-to-process` count (actions à traiter)
-- Tables brancher : `Project.isConfirmed = false` (Admin), `WeekPlanner` équipe semaine en cours (Manager), `KeyResult` en cours (Collaborateur)
+Le projet est complet et propre. La prochaine étape logique est la **mise en production** :
+1. `git add` des fichiers modifiés + `git commit` sur `dev`
+2. `git merge dev → main` (ou PR `dev → main`)
+3. Déploiement sur Vercel (branch `main`)
+4. Vérifier que les variables d'environnement sont toutes configurées sur Vercel (voir liste dans `context/code-standards.md`, y compris `SUPPORT_EMAIL` ajouté en Feature 32)
 
 ## Questions en suspens
 
-- **Performance Feature 31** : la build plan mentionne "≤ 3 secondes à 100 utilisateurs simultanés" — les requêtes de consolidation doivent être parallélisées (`Promise.all`) et les agrégations faites en Prisma (`_count`, `_avg`) plutôt qu'en mémoire
-- **`RecentActivity` Feature 31** : pas de table `Activity` dans le schéma Prisma. Options : (a) agréger depuis plusieurs tables existantes avec `orderBy createdAt desc`, (b) laisser en mock jusqu'à une décision produit. À trancher au moment de l'architecture
-- **Filtre période** : la semaine courante est définie par `Date.UTC(...)` — s'assurer que les bornes `weekStart` / `weekEnd` sont cohérentes avec `WeekPlanner.weekStartDate` (lundi) et `weekEndDate` (vendredi)
+- **`SUPPORT_EMAIL`** — variable d'environnement ajoutée dans `.env.example` pour la Feature 32 (remontée de bugs). À configurer sur Vercel avant le déploiement.
+- **Migration Prisma en prod** — `npx prisma migrate deploy` doit être exécuté sur la base de données de production avant le premier déploiement (ou via une étape de build Vercel).
+- **Service Worker push** — `public/sw.js` doit être servi depuis la racine du domaine de production pour que les notifications push fonctionnent. Vérifier la config Vercel.

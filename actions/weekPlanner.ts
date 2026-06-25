@@ -197,12 +197,10 @@ export async function submitWeekPlanner(
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Non authentifié" };
 
-  if (session.user.role === "ADMIN") {
-    return { success: false, error: "Les administrateurs ne soumettent pas de planning." };
-  }
-
   const parsed = submitPlannerSchema.safeParse({ plannerId });
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+
+  const isAdmin = session.user.role === "ADMIN";
 
   try {
     const planner = await prisma.weekPlanner.findUnique({
@@ -214,10 +212,28 @@ export async function submitWeekPlanner(
     if (planner.userId !== session.user.id) return { success: false, error: "Accès non autorisé" };
     if (planner.status !== "DRAFT") return { success: false, error: "Le planning a déjà été soumis" };
 
-    await prisma.weekPlanner.update({
-      where: { id: parsed.data.plannerId },
-      data: { status: "SUBMITTED" },
-    });
+    if (isAdmin) {
+      // L'Administrateur valide directement son propre planning — personne d'autre ne le valide
+      await prisma.$transaction(async (tx) => {
+        await tx.weekPlanner.update({
+          where: { id: parsed.data.plannerId },
+          data: {
+            status: "VALIDATED",
+            validatedById: session.user.id,
+            validatedAt: new Date(),
+          },
+        });
+        await tx.weekPlannerTask.updateMany({
+          where: { weekPlannerId: parsed.data.plannerId },
+          data: { isLocked: true },
+        });
+      });
+    } else {
+      await prisma.weekPlanner.update({
+        where: { id: parsed.data.plannerId },
+        data: { status: "SUBMITTED" },
+      });
+    }
 
     revalidatePath("/week-planner");
     return { success: true, data: undefined };

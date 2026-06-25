@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Bell, LogOut } from "lucide-react";
 import { signOut } from "@/lib/auth";
 
@@ -23,7 +24,10 @@ export function TopBar({ pageTitle, userName, userRole }: Props) {
         </button>
 
         {/* Profil */}
-        <div className="flex items-center gap-2">
+        <Link
+          href="/profile"
+          className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-gray50"
+        >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-facamBlueMid text-xs font-semibold text-facamWhite">
             {userName.slice(0, 2).toUpperCase()}
           </div>
@@ -33,7 +37,7 @@ export function TopBar({ pageTitle, userName, userRole }: Props) {
             </p>
             <p className="mt-0.5 text-xs text-gray500">{userRole}</p>
           </div>
-        </div>
+        </Link>
 
         {/* Déconnexion */}
         <form

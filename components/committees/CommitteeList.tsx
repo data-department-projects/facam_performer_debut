@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Users, Calendar, TrendingUp } from "lucide-react";
+import { Plus, Users, TrendingUp, Briefcase } from "lucide-react";
 import type { MockCommittee } from "@/app/committees/_mock-data";
 
 export type { MockCommittee };
 
 const FREQUENCY_LABELS: Record<MockCommittee["frequency"], string> = {
   WEEKLY: "Hebdomadaire",
+  BIMONTHLY: "Bimensuel",
   MONTHLY: "Mensuel",
   QUARTERLY: "Trimestriel",
   ANNUAL: "Annuel",
@@ -95,19 +96,23 @@ export function CommitteeList({ committees, canCreate }: Props) {
                   </span>
                 </div>
 
-                {/* Objectifs */}
-                <p className="line-clamp-2 text-xs text-gray500">{committee.objectives}</p>
+                {/* Description ou objectifs */}
+                <p className="line-clamp-2 text-xs text-gray500">
+                  {committee.description ?? committee.objectives}
+                </p>
 
                 {/* Métadonnées */}
-                <div className="flex items-center gap-4 text-xs text-gray500">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-gray500">
                   <span className="flex items-center gap-1">
                     <Users size={12} />
                     {totalMembers} membre{totalMembers > 1 ? "s" : ""}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar size={12} />
-                    {committee.meetings.length} réunion{committee.meetings.length > 1 ? "s" : ""}
-                  </span>
+                  {committee.projectName && (
+                    <span className="flex items-center gap-1 text-facamBlue">
+                      <Briefcase size={12} />
+                      {committee.projectName}
+                    </span>
+                  )}
                 </div>
 
                 {/* Prochaine réunion */}

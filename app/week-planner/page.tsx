@@ -39,19 +39,58 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
   const role = session.user.role;
 
   if (role === "ADMIN") {
-    const managers = await prisma.user.findMany({
-      where: { role: "MANAGER", isActive: true },
-      select: {
-        id: true,
-        fullName: true,
-        weekPlanners: {
-          where: { weekStartDate: weekStart },
-          select: { id: true, status: true, weekStartDate: true },
-          take: 1,
+    const [managers, rawAdminPlanner, adminProjects, adminGanttTasks] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: "MANAGER", isActive: true },
+        select: {
+          id: true,
+          fullName: true,
+          weekPlanners: {
+            where: { weekStartDate: weekStart },
+            select: { id: true, status: true, weekStartDate: true },
+            take: 1,
+          },
         },
-      },
-      orderBy: { fullName: "asc" },
-    });
+        orderBy: { fullName: "asc" },
+      }),
+      // Propre planning de l'Admin
+      prisma.weekPlanner.findFirst({
+        where: { userId, weekStartDate: weekStart },
+        select: {
+          id: true,
+          weekStartDate: true,
+          status: true,
+          tasks: {
+            select: {
+              id: true,
+              title: true,
+              plannedDay: true,
+              status: true,
+              comment: true,
+              isLocked: true,
+              project: { select: { id: true, name: true, code: true } },
+            },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      }),
+      // Tous les projets confirmés accessibles à l'Admin
+      prisma.project.findMany({
+        where: { isConfirmed: true },
+        select: { id: true, name: true, code: true },
+        orderBy: { name: "asc" },
+      }),
+      // Tâches Gantt assignées à l'Admin
+      prisma.ganttTask.findMany({
+        where: {
+          responsibleUserId: userId,
+          project: { isConfirmed: true },
+          status: { notIn: ["DONE", "BLOCKED"] },
+        },
+        select: { id: true, title: true, projectId: true },
+        orderBy: { title: "asc" },
+      }),
+    ]);
 
     const managersForView = managers.map((m) => ({
       id: m.id,
@@ -66,45 +105,73 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
         : { id: "", status: "DRAFT" as const, weekStartDate },
     }));
 
+    const weekLabel = formatWeekLabel(weekStartDate);
+
     return (
       <AppShell pageTitle="Week Planner">
-        <AdminWeekPlannerView managers={managersForView} />
+        <AdminWeekPlannerView
+          managers={managersForView}
+          ownPlanner={
+            rawAdminPlanner
+              ? {
+                  id: rawAdminPlanner.id,
+                  weekStartDate: rawAdminPlanner.weekStartDate,
+                  status: rawAdminPlanner.status as "DRAFT" | "SUBMITTED" | "VALIDATED",
+                  tasks: rawAdminPlanner.tasks,
+                }
+              : null
+          }
+          confirmedProjects={adminProjects}
+          assignedGanttTasks={adminGanttTasks}
+          weekStartDate={weekStartDate}
+          weekLabel={weekLabel}
+        />
       </AppShell>
     );
   }
 
-  const confirmedProjects = await prisma.project.findMany({
-    where: {
-      isConfirmed: true,
-      OR: [
-        { projectManagerId: userId },
-        { teamMembers: { some: { userId } } },
-      ],
-    },
-    select: { id: true, name: true, code: true },
-    orderBy: { name: "asc" },
-  });
-
-  const rawPlanner = await prisma.weekPlanner.findFirst({
-    where: { userId, weekStartDate: weekStart },
-    select: {
-      id: true,
-      weekStartDate: true,
-      status: true,
-      tasks: {
-        select: {
-          id: true,
-          title: true,
-          plannedDay: true,
-          status: true,
-          comment: true,
-          isLocked: true,
-          project: { select: { id: true, name: true, code: true } },
-        },
-        orderBy: { createdAt: "asc" },
+  const [confirmedProjects, rawPlanner, assignedGanttTasks] = await Promise.all([
+    prisma.project.findMany({
+      where: {
+        isConfirmed: true,
+        OR: [
+          { projectManagerId: userId },
+          { teamMembers: { some: { userId } } },
+        ],
       },
-    },
-  });
+      select: { id: true, name: true, code: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.weekPlanner.findFirst({
+      where: { userId, weekStartDate: weekStart },
+      select: {
+        id: true,
+        weekStartDate: true,
+        status: true,
+        tasks: {
+          select: {
+            id: true,
+            title: true,
+            plannedDay: true,
+            status: true,
+            comment: true,
+            isLocked: true,
+            project: { select: { id: true, name: true, code: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    }),
+    prisma.ganttTask.findMany({
+      where: {
+        responsibleUserId: userId,
+        project: { isConfirmed: true },
+        status: { notIn: ["DONE", "BLOCKED"] },
+      },
+      select: { id: true, title: true, projectId: true },
+      orderBy: { title: "asc" },
+    }),
+  ]);
 
   const weekLabel = formatWeekLabel(weekStartDate);
 
@@ -157,6 +224,7 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
               : null
           }
           confirmedProjects={confirmedProjects}
+          assignedGanttTasks={assignedGanttTasks}
           weekStartDate={weekStartDate}
           weekLabel={weekLabel}
           teamMembers={membersForView}
@@ -184,6 +252,7 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
           tasks: rawPlanner.tasks,
         }}
         confirmedProjects={confirmedProjects}
+        assignedGanttTasks={assignedGanttTasks}
         weekStartDate={weekStartDate}
       />
     </AppShell>

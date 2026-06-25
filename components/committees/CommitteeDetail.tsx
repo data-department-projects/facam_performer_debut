@@ -9,6 +9,7 @@ import type { MockCommittee } from "@/app/committees/_mock-data";
 
 const FREQUENCY_LABELS: Record<MockCommittee["frequency"], string> = {
   WEEKLY: "Hebdomadaire",
+  BIMONTHLY: "Bimensuel",
   MONTHLY: "Mensuel",
   QUARTERLY: "Trimestriel",
   ANNUAL: "Annuel",

@@ -5,7 +5,7 @@ import { Trash2, Check } from "lucide-react";
 import { AddTaskInline } from "./AddTaskInline";
 import { TaskStatusBadge } from "./TaskStatusBadge";
 import { updateTaskExecution } from "@/actions/dailyExecution";
-import type { WeekTask, ConfirmedProject, PlannedDay, PlannerStatus, TaskStatus } from "./types";
+import type { WeekTask, ConfirmedProject, AssignedGanttTask, PlannedDay, PlannerStatus, TaskStatus } from "./types";
 
 const DAY_LABELS: Record<PlannedDay, string> = {
   MON: "Lundi",
@@ -30,11 +30,12 @@ type Props = {
   tasks: WeekTask[];
   plannerStatus: PlannerStatus;
   confirmedProjects: ConfirmedProject[];
+  assignedGanttTasks?: AssignedGanttTask[];
   onAddTask: (title: string, projectId: string | null) => void;
   onDeleteTask: (taskId: string) => void;
 };
 
-export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, onAddTask, onDeleteTask }: Props) {
+export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, assignedGanttTasks, onAddTask, onDeleteTask }: Props) {
   const [execState, setExecState] = useState<Record<string, TaskExecState>>(() => {
     const init: Record<string, TaskExecState> = {};
     tasks.forEach((t) => {
@@ -198,6 +199,7 @@ export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, onA
           {showAdd ? (
             <AddTaskInline
               confirmedProjects={confirmedProjects}
+              assignedGanttTasks={assignedGanttTasks}
               onAdd={(title, projectId) => {
                 onAddTask(title, projectId);
                 setShowAdd(false);

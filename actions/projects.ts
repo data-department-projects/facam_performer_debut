@@ -32,14 +32,15 @@ export async function createProject(
           name: input.name,
           description: input.description ?? null,
           category: input.category,
+          categoryOther: input.category === "OTHER" ? (input.categoryOther ?? null) : null,
           strategicPriority: input.strategicPriority,
           currentStatus: "PENDING",
           isConfirmed: false,
-          sponsorUserId: input.sponsorUserId,
+          sponsorUserId: input.projectManagerId,
           projectManagerId: input.projectManagerId,
-          beneficiaryType: input.beneficiaryType,
+          beneficiaryType: "INTERNAL",
           beneficiaryDepartmentId: input.beneficiaryDepartmentId ?? null,
-          beneficiaryExternalName: input.beneficiaryExternalName ?? null,
+          beneficiaryExternalName: null,
           estimatedStartDate: new Date(input.estimatedStartDate),
           targetEndDate: new Date(input.targetEndDate),
           actualStartDate: input.actualStartDate
@@ -161,7 +162,7 @@ export async function createProjectExpense(
       return { success: false, error: parsed.error.issues[0].message };
     }
 
-    const { label, amount, expenseType, expenseDate } = parsed.data;
+    const { label, amount, expenseType, expenseCategory, expenseDate } = parsed.data;
     const [y, m, d] = expenseDate.split("-").map(Number);
 
     await prisma.projectExpense.create({
@@ -170,6 +171,7 @@ export async function createProjectExpense(
         label: label.trim(),
         amount,
         expenseType,
+        expenseCategory: expenseCategory?.trim() || null,
         expenseDate: new Date(Date.UTC(y, m - 1, d)),
         createdById: currentUser.id,
       },
@@ -180,6 +182,86 @@ export async function createProjectExpense(
   } catch (error) {
     console.error("[actions/projects] createProjectExpense", error);
     return { success: false, error: "Impossible d'enregistrer la dépense." };
+  }
+}
+
+export async function updateProject(
+  projectId: string,
+  rawData: unknown,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return { success: false, error: "Non authentifié." };
+    if (currentUser.role !== "ADMIN" && currentUser.role !== "MANAGER") {
+      return { success: false, error: "Accès non autorisé." };
+    }
+
+    const parsed = projectSchema.safeParse(rawData);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? "Données invalides." };
+    }
+
+    if (currentUser.role === "MANAGER") {
+      const existing = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { projectManagerId: true },
+      });
+      if (!existing) return { success: false, error: "Projet introuvable." };
+      if (existing.projectManagerId !== currentUser.id) {
+        return { success: false, error: "Accès non autorisé." };
+      }
+      if (parsed.data.projectManagerId !== currentUser.id) {
+        return { success: false, error: "Vous ne pouvez pas transférer la gestion du projet à un autre utilisateur." };
+      }
+    }
+
+    const input = parsed.data;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.project.update({
+        where: { id: projectId },
+        data: {
+          name: input.name,
+          description: input.description ?? null,
+          category: input.category,
+          categoryOther: input.category === "OTHER" ? (input.categoryOther ?? null) : null,
+          strategicPriority: input.strategicPriority,
+          sponsorUserId: input.projectManagerId,
+          projectManagerId: input.projectManagerId,
+          beneficiaryType: "INTERNAL",
+          beneficiaryDepartmentId: input.beneficiaryDepartmentId ?? null,
+          beneficiaryExternalName: null,
+          estimatedStartDate: new Date(input.estimatedStartDate),
+          targetEndDate: new Date(input.targetEndDate),
+          actualStartDate: input.actualStartDate ? new Date(input.actualStartDate) : null,
+          actualEndDate: input.actualEndDate ? new Date(input.actualEndDate) : null,
+          initialBudget: input.initialBudget,
+          scopeIncluded: input.scopeIncluded ?? "",
+          scopeExcluded: input.scopeExcluded ?? "",
+          expectedDeliverables: input.expectedDeliverables.map((d) => d.value),
+          successCriteria: input.successCriteria.map((d) => d.value),
+          documentationLinks: input.documentationLinks.map((d) => d.value),
+        },
+      });
+
+      await tx.projectTeamMember.deleteMany({ where: { projectId } });
+      if (input.teamMembers.length > 0) {
+        await tx.projectTeamMember.createMany({
+          data: input.teamMembers.map((m) => ({
+            projectId,
+            userId: m.userId,
+            roleLabel: m.roleLabel,
+          })),
+        });
+      }
+    });
+
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/projects");
+    return { success: true };
+  } catch (error) {
+    console.error("[actions/projects] updateProject", error);
+    return { success: false, error: "Impossible de mettre à jour le projet." };
   }
 }
 
@@ -205,6 +287,14 @@ export async function deleteProjectExpense(
         project?.projectManagerId === currentUser.id ||
         project?.teamMembers.some((m) => m.userId === currentUser.id);
       if (!isOwner) return { success: false, error: "Accès non autorisé." };
+    }
+
+    const expense = await prisma.projectExpense.findUnique({
+      where: { id: expenseId },
+      select: { projectId: true },
+    });
+    if (!expense || expense.projectId !== projectId) {
+      return { success: false, error: "Dépense introuvable ou accès refusé." };
     }
 
     await prisma.projectExpense.delete({ where: { id: expenseId } });

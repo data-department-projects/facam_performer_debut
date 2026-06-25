@@ -56,6 +56,7 @@ enum BeneficiaryType {
 
 enum CommitteeFrequency {
   WEEKLY
+  BIMONTHLY
   MONTHLY
   QUARTERLY
   ANNUAL
@@ -260,6 +261,7 @@ model Project {
   name                     String
   description              String?
   category                 ProjectCategory
+  categoryOther            String?
   strategicPriority        StrategicPriority
   currentStatus            ProjectStatus   @default(PENDING)
   sponsorUserId            String
@@ -293,19 +295,21 @@ model Project {
   ganttTasks           GanttTask[]
   weekPlannerTasks     WeekPlannerTask[]
   expenses             ProjectExpense[]
+  committees           Committee[]
 
   @@index([projectManagerId])
   @@index([isConfirmed])
 }
 
 model ProjectExpense {
-  id          String             @id @default(uuid())
-  projectId   String
-  label       String
-  amount      Decimal
-  expenseType ProjectExpenseType
-  expenseDate DateTime
-  createdById String
+  id              String             @id @default(uuid())
+  projectId       String
+  label           String
+  amount          Decimal
+  expenseType     ProjectExpenseType
+  expenseCategory String?
+  expenseDate     DateTime
+  createdById     String
   createdAt   DateTime           @default(now())
 
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -367,20 +371,24 @@ model GanttTask {
 // ============================================================
 
 model Committee {
-  id              String             @id @default(uuid())
-  name            String
+  id                String             @id @default(uuid())
+  name              String
+  description       String?
   responsibleUserId String
-  objectives      String
-  frequency       CommitteeFrequency
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  objectives        String
+  frequency         CommitteeFrequency
+  projectId         String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
-  responsible       User                  @relation(fields: [responsibleUserId], references: [id])
-  departments       CommitteeDepartment[]
-  members           CommitteeMember[]
-  meetings          CommitteeMeeting[]
+  responsible User                  @relation(fields: [responsibleUserId], references: [id])
+  project     Project?              @relation(fields: [projectId], references: [id])
+  departments CommitteeDepartment[]
+  members     CommitteeMember[]
+  meetings    CommitteeMeeting[]
 
   @@index([responsibleUserId])
+  @@index([projectId])
 }
 
 model CommitteeDepartment {
