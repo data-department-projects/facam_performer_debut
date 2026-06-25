@@ -37,9 +37,11 @@ export async function createCommittee(
     const committee = await prisma.committee.create({
       data: {
         name: input.name,
+        description: input.description ?? null,
         responsibleUserId: input.responsibleUserId,
         objectives: input.objectives,
         frequency: input.frequency,
+        projectId: input.projectId ?? null,
         departments: {
           create: input.departmentIds.map((departmentId) => ({ departmentId })),
         },
@@ -162,16 +164,43 @@ export async function updateCommitteeActionStatus(
   status: CommitteeActionStatus,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireRole(["ADMIN", "MANAGER"]);
+    const currentUser = await requireRole(["ADMIN", "MANAGER"]);
 
-    const updated = await prisma.committeeAction.update({
+    const action = await prisma.committeeAction.findUnique({
+      where: { id: actionId },
+      select: {
+        meeting: {
+          select: {
+            committeeId: true,
+            committee: {
+              select: {
+                responsibleUserId: true,
+                members: { select: { userId: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!action) return { success: false, error: "Action introuvable." };
+
+    if (currentUser.role === "MANAGER") {
+      const { committee } = action.meeting;
+      const isMember = committee.members.some((m) => m.userId === currentUser.id);
+      const isResponsible = committee.responsibleUserId === currentUser.id;
+      if (!isMember && !isResponsible) {
+        return { success: false, error: "Accès non autorisé." };
+      }
+    }
+
+    await prisma.committeeAction.update({
       where: { id: actionId },
       data: { status },
-      select: { meeting: { select: { committeeId: true } } },
     });
 
     revalidatePath("/committees");
-    revalidatePath(`/committees/${updated.meeting.committeeId}`);
+    revalidatePath(`/committees/${action.meeting.committeeId}`);
     return { success: true };
   } catch (error) {
     console.error("[actions/committees] updateCommitteeActionStatus", error);
@@ -188,7 +217,10 @@ export async function updateMyCommitteeActionStatus(
 
     const action = await prisma.committeeAction.findUnique({
       where: { id: actionId },
-      select: { responsibleUserId: true },
+      select: {
+        responsibleUserId: true,
+        meeting: { select: { committeeId: true } },
+      },
     });
 
     if (!action || action.responsibleUserId !== currentUser.id) {
@@ -201,6 +233,7 @@ export async function updateMyCommitteeActionStatus(
     });
 
     revalidatePath("/committees");
+    revalidatePath(`/committees/${action.meeting.committeeId}`);
     return { success: true };
   } catch (error) {
     console.error("[actions/committees] updateMyCommitteeActionStatus", error);

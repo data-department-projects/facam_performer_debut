@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { notifyUser } from "@/lib/notify";
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -14,20 +14,22 @@ export async function GET(req: NextRequest) {
   try {
     const users = await prisma.user.findMany({
       where: { isActive: true },
-      select: { email: true, fullName: true },
+      select: { id: true, fullName: true },
     });
 
     let sent = 0;
     for (const user of users) {
       try {
-        await sendEmail({
-          to: user.email,
-          template: "weekly-reminder",
-          data: { name: user.fullName },
+        await notifyUser(user.id, {
+          title: "Planifiez votre semaine",
+          body: "N'oubliez pas de planifier votre semaine dans FACAM PERFORMER.",
+          url: "/week-planner",
+          emailTemplate: "weekly-reminder",
+          emailData: {},
         });
         sent++;
       } catch {
-        console.error(`[cron/weekly-reminder] Échec envoi à ${user.email}`);
+        console.error(`[cron/weekly-reminder] Échec envoi à ${user.id}`);
       }
     }
 

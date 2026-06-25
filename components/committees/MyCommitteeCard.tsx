@@ -4,7 +4,7 @@ export type MyCommittee = {
   id: string;
   name: string;
   objectives: string;
-  frequency: "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "AD_HOC";
+  frequency: "WEEKLY" | "BIMONTHLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "AD_HOC";
   nextMeeting: {
     meetingDate: string;
     startTime: string;
@@ -15,6 +15,7 @@ export type MyCommittee = {
 
 const FREQUENCY_LABELS: Record<MyCommittee["frequency"], string> = {
   WEEKLY: "Hebdomadaire",
+  BIMONTHLY: "Bimensuel",
   MONTHLY: "Mensuel",
   QUARTERLY: "Trimestriel",
   ANNUAL: "Annuel",
@@ -23,6 +24,7 @@ const FREQUENCY_LABELS: Record<MyCommittee["frequency"], string> = {
 
 const FREQUENCY_COLORS: Record<MyCommittee["frequency"], string> = {
   WEEKLY: "bg-facamBlueTint text-facamBlue",
+  BIMONTHLY: "bg-facamBlueTint text-facamBlue",
   MONTHLY: "bg-successLight text-success",
   QUARTERLY: "bg-warningLight text-warning",
   ANNUAL: "bg-errorLight text-error",

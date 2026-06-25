@@ -4,11 +4,12 @@ import { useState } from "react";
 import { CollaboratorWeekPlannerView } from "./CollaboratorWeekPlannerView";
 import { ManagerWeekPlannerView } from "./ManagerWeekPlannerView";
 import { EmptyWeekView } from "./EmptyWeekView";
-import type { WeekPlannerData, ConfirmedProject, TeamMember } from "./types";
+import type { WeekPlannerData, ConfirmedProject, AssignedGanttTask, TeamMember } from "./types";
 
 type Props = {
   ownPlanner: WeekPlannerData | null;
   confirmedProjects: ConfirmedProject[];
+  assignedGanttTasks?: AssignedGanttTask[];
   weekStartDate: string;
   weekLabel: string;
   teamMembers: TeamMember[];
@@ -21,7 +22,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "team", label: "Mon Équipe" },
 ];
 
-export function ManagerWeekPlannerFullView({ ownPlanner, confirmedProjects, weekStartDate, weekLabel, teamMembers }: Props) {
+export function ManagerWeekPlannerFullView({ ownPlanner, confirmedProjects, assignedGanttTasks, weekStartDate, weekLabel, teamMembers }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("planning");
 
   return (
@@ -47,6 +48,7 @@ export function ManagerWeekPlannerFullView({ ownPlanner, confirmedProjects, week
           <CollaboratorWeekPlannerView
             planner={ownPlanner}
             confirmedProjects={confirmedProjects}
+            assignedGanttTasks={assignedGanttTasks}
             weekStartDate={weekStartDate}
             validatorLabel="l'Administrateur"
           />

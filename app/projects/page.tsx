@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import type { MockProject } from "@/components/projects/ProjectList";
-import { CollaboratorProjectsView } from "@/components/projects/CollaboratorProjectsView";
+import { CollaboratorProjectsView, type CollaboratorProject } from "@/components/projects/CollaboratorProjectsView";
 import { ProjectPageTabs } from "@/components/projects/ProjectPageTabs";
 import type { MyProjectEntry } from "@/components/projects/MyProjectTasksView";
 import { prisma } from "@/lib/prisma";
@@ -29,38 +29,39 @@ export default async function ProjectsPage() {
         description: true,
         estimatedStartDate: true,
         targetEndDate: true,
+        isConfirmed: true,
+        currentStatus: true,
         projectManager: { select: { fullName: true } },
         ganttTasks: {
           where: { responsibleUserId: userId },
-          select: { id: true, title: true, endDate: true, progressPercent: true },
+          select: { id: true, title: true, endDate: true, progressPercent: true, status: true },
           orderBy: { endDate: "asc" },
         },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    const projects = collaboratorData.map((p) => ({
+    const projects: CollaboratorProject[] = collaboratorData.map((p) => ({
       id: p.id,
       name: p.name,
       description: p.description ?? "",
       estimatedStartDate: p.estimatedStartDate.toISOString().split("T")[0],
       targetEndDate: p.targetEndDate.toISOString().split("T")[0],
+      isConfirmed: p.isConfirmed,
+      currentStatus: p.currentStatus,
       projectManager: p.projectManager,
-    }));
-
-    const tasks = collaboratorData.flatMap((p) =>
-      p.ganttTasks.map((t) => ({
+      tasks: p.ganttTasks.map((t) => ({
         id: t.id,
         title: t.title,
         endDate: t.endDate.toISOString().split("T")[0],
         progressPercent: t.progressPercent,
-        projectName: p.name,
+        status: t.status as "TODO" | "IN_PROGRESS" | "DONE" | "BLOCKED",
       })),
-    );
+    }));
 
     return (
       <AppShell pageTitle="Mes Projets">
-        <CollaboratorProjectsView projects={projects} tasks={tasks} />
+        <CollaboratorProjectsView projects={projects} />
       </AppShell>
     );
   }

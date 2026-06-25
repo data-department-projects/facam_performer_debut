@@ -199,9 +199,23 @@ export async function updateGanttTaskStatus(
     });
     if (!task) return { success: false, error: "Tâche introuvable." };
 
-    // COLLABORATOR / INTERN → uniquement leurs propres tâches
+    const project = await prisma.project.findUnique({
+      where: { id: task.projectId },
+      select: { isConfirmed: true, projectManagerId: true, teamMembers: { select: { userId: true } } },
+    });
+    if (!project) return { success: false, error: "Projet introuvable." };
+
     const role = currentUser.role as string;
-    if (role !== "ADMIN" && role !== "MANAGER") {
+    if (role !== "ADMIN" && !project.isConfirmed) {
+      return { success: false, error: "Le projet n'est pas encore confirmé par l'Administrateur." };
+    }
+    if (role === "MANAGER") {
+      const isOwner =
+        project.projectManagerId === currentUser.id ||
+        project.teamMembers.some((m) => m.userId === currentUser.id);
+      if (!isOwner) return { success: false, error: "Accès non autorisé." };
+    } else if (role !== "ADMIN") {
+      // COLLABORATOR / INTERN → uniquement leurs propres tâches
       if (task.responsibleUserId !== currentUser.id) {
         return { success: false, error: "Vous ne pouvez mettre à jour que vos propres tâches." };
       }
@@ -229,13 +243,30 @@ export async function deleteGanttTask(
   taskId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireRole(["ADMIN", "MANAGER"]);
+    const currentUser = await getCurrentUser();
+    if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.role !== "MANAGER")) {
+      return { success: false, error: "Accès non autorisé." };
+    }
 
     const task = await prisma.ganttTask.findUnique({
       where: { id: taskId },
       select: { projectId: true },
     });
     if (!task) return { success: false, error: "Tâche introuvable." };
+
+    if (currentUser.role === "MANAGER") {
+      const project = await prisma.project.findUnique({
+        where: { id: task.projectId },
+        select: { isConfirmed: true, projectManagerId: true, teamMembers: { select: { userId: true } } },
+      });
+      if (!project?.isConfirmed) {
+        return { success: false, error: "Le projet n'est pas encore confirmé par l'Administrateur." };
+      }
+      const isOwner =
+        project.projectManagerId === currentUser.id ||
+        project.teamMembers.some((m) => m.userId === currentUser.id);
+      if (!isOwner) return { success: false, error: "Accès non autorisé." };
+    }
 
     await prisma.$transaction(async (tx) => {
       // Retirer taskId des prérequis des autres tâches du projet

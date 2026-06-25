@@ -28,6 +28,20 @@ export async function notifyUser(
     user.notificationConsent === "ACCEPTED" &&
     user.pushSubscriptions.length > 0
   ) {
+    if (
+      !process.env.VAPID_SUBJECT ||
+      !process.env.VAPID_PUBLIC_KEY ||
+      !process.env.VAPID_PRIVATE_KEY
+    ) {
+      // VAPID non configuré — fallback email sans toucher aux abonnements
+      await sendEmail({
+        to: user.email,
+        template: payload.emailTemplate,
+        data: { name: user.fullName, ...payload.emailData },
+      });
+      return;
+    }
+
     for (const sub of user.pushSubscriptions) {
       const result = await sendPushNotification(
         {

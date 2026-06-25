@@ -51,6 +51,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - [x] 20 Planification hebdomadaire — Logique (2026-06-22) — Server Actions CRUD + DB réelle, EmptyWeekView, navigation URL param, clé React
 - [x] 21 Validation du Week Planner — Logique (2026-06-22) — validateWeekPlanner + transaction Règle 8, cron weekly-planner-reminder
 - [x] 22 Exécution quotidienne & déclaration du temps — Logique (2026-06-22) — updateTaskExecution, upsert TimeEntry, Gantt Option A, DayTaskPanel branché
+- [x] Améliorations post-feature (2026-06-24) — page profil utilisateur (`app/profile/`, `components/profile/ProfileView.tsx`, `actions/profile.ts`), modification de projet par le Manager (`updateProject` dans `actions/projects.ts`, `ProjectDetailTabs.tsx` mode édition inline), fix visibilité projets collaborateur (suppression filtre `isConfirmed` erroné), Kanban tâches assignées collaborateur (`components/projects/ProjectTaskKanban.tsx`, `CollaboratorProjectsView.tsx` refonte), import tâches Gantt dans Week Planner (`AddTaskInline.tsx` — flux Hors-projet / Projet → projet → tâche Gantt avec pré-remplissage titre)
 
 ### Phase 6 — Suivi ETP & Temps de travail
 

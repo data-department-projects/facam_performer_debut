@@ -13,6 +13,7 @@ export type WeekTask = {
 };
 
 export type ConfirmedProject = { id: string; name: string; code: string };
+export type AssignedGanttTask = { id: string; title: string; projectId: string };
 
 export type WeekPlannerData = {
   id: string;
