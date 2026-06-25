@@ -7,15 +7,17 @@ import { WeekDayBar } from "./WeekDayBar";
 import { DayTaskPanel } from "./DayTaskPanel";
 import { WeekStatusBanner } from "./WeekStatusBanner";
 import { addWeekPlannerTask, deleteWeekPlannerTask, submitWeekPlanner } from "@/actions/weekPlanner";
-import type { PlannedDay, WeekTask, WeekPlannerData, ConfirmedProject } from "./types";
+import type { PlannedDay, WeekTask, WeekPlannerData, ConfirmedProject, AssignedGanttTask } from "./types";
 
 export type { WeekTask, WeekPlannerData, ConfirmedProject };
 
 type Props = {
   planner: WeekPlannerData;
   confirmedProjects: ConfirmedProject[];
+  assignedGanttTasks?: AssignedGanttTask[];
   weekStartDate: string;
   validatorLabel?: string;
+  noValidation?: boolean;
 };
 
 const DAYS: PlannedDay[] = ["MON", "TUE", "WED", "THU", "FRI"];
@@ -23,8 +25,10 @@ const DAYS: PlannedDay[] = ["MON", "TUE", "WED", "THU", "FRI"];
 export function CollaboratorWeekPlannerView({
   planner: initialPlanner,
   confirmedProjects,
+  assignedGanttTasks,
   weekStartDate,
   validatorLabel,
+  noValidation = false,
 }: Props) {
   const router = useRouter();
   const [planner, setPlanner] = useState(initialPlanner);
@@ -118,7 +122,12 @@ export function CollaboratorWeekPlannerView({
     startTransition(async () => {
       const result = await submitWeekPlanner(planner.id);
       if (result.success) {
-        setPlanner((prev) => ({ ...prev, status: "SUBMITTED" }));
+        // Admin auto-valide directement — les autres passent en SUBMITTED
+        setPlanner((prev) => ({
+          ...prev,
+          status: noValidation ? "VALIDATED" : "SUBMITTED",
+          tasks: noValidation ? prev.tasks.map((t) => ({ ...t, isLocked: true })) : prev.tasks,
+        }));
       }
     });
   }
@@ -150,6 +159,7 @@ export function CollaboratorWeekPlannerView({
         taskCount={planner.tasks.length}
         onSubmit={handleSubmit}
         validatorLabel={validatorLabel}
+        noValidation={noValidation}
       />
 
       <WeekDayBar
@@ -165,6 +175,7 @@ export function CollaboratorWeekPlannerView({
         tasks={tasksByDay[activeDay] ?? []}
         plannerStatus={planner.status}
         confirmedProjects={confirmedProjects}
+        assignedGanttTasks={assignedGanttTasks}
         onAddTask={handleAddTask}
         onDeleteTask={handleDeleteTask}
       />

@@ -8,9 +8,10 @@ type Props = {
   taskCount: number;
   onSubmit: () => void;
   validatorLabel?: string;
+  noValidation?: boolean;
 };
 
-export function WeekStatusBanner({ status, taskCount, onSubmit, validatorLabel = "votre manager" }: Props) {
+export function WeekStatusBanner({ status, taskCount, onSubmit, validatorLabel = "votre manager", noValidation = false }: Props) {
   if (status === "VALIDATED") {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-successLight px-4 py-2.5">
@@ -32,13 +33,17 @@ export function WeekStatusBanner({ status, taskCount, onSubmit, validatorLabel =
 
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border border-gray200 bg-gray50 px-4 py-2.5">
-      <span className="text-sm text-gray500">Brouillon — planifiez votre semaine puis soumettez pour validation</span>
+      <span className="text-sm text-gray500">
+        {noValidation
+          ? "Brouillon — planifiez votre semaine et validez-la directement"
+          : "Brouillon — planifiez votre semaine puis soumettez pour validation"}
+      </span>
       <button
         onClick={onSubmit}
         disabled={taskCount === 0}
         className="flex-shrink-0 rounded-md bg-facamBlue px-3 py-1.5 text-xs font-semibold text-facamWhite hover:bg-facamDark disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Soumettre pour validation
+        {noValidation ? "Valider ma semaine" : "Soumettre pour validation"}
       </button>
     </div>
   );

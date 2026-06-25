@@ -14,12 +14,16 @@ export default async function NewCommitteePage() {
   const role = session.user.role;
   if (role === "COLLABORATOR" || role === "INTERN") redirect("/committees");
 
-  const [departments, users] = await Promise.all([
+  const [departments, users, projects] = await Promise.all([
     prisma.department.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.user.findMany({
       where: { isActive: true },
       orderBy: { fullName: "asc" },
       select: { id: true, fullName: true },
+    }),
+    prisma.project.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, code: true, name: true },
     }),
   ]);
 
@@ -34,7 +38,7 @@ export default async function NewCommitteePage() {
             ← Retour aux comités
           </Link>
         </div>
-        <CommitteeForm departments={departments} users={users} />
+        <CommitteeForm departments={departments} users={users} projects={projects} />
       </div>
     </AppShell>
   );

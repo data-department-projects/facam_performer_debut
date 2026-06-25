@@ -21,7 +21,7 @@ export default async function DashboardPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const { role, id: userId, departmentId } = session.user;
+  const { role, id: userId, departmentId, name: userName } = session.user;
 
   const params = await searchParams;
   const period = parsePeriod(params.period);
@@ -32,5 +32,5 @@ export default async function DashboardPage({
     period,
   });
 
-  return <DashboardView role={role} period={period} data={data} />;
+  return <DashboardView role={role} period={period} data={data} userName={userName ?? null} />;
 }

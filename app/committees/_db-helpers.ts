@@ -5,9 +5,11 @@ import type { MockCommittee } from "@/app/committees/_mock-data";
 type CommitteeForMapping = {
   id: string;
   name: string;
+  description: string | null;
   objectives: string;
   frequency: string;
   responsible: { fullName: string };
+  project: { id: string; name: string } | null;
   departments: { department: { name: string } }[];
   members: { userId: string; memberType: string; user: { fullName: string } }[];
   meetings: {
@@ -28,6 +30,7 @@ type CommitteeForMapping = {
 
 export const committeeInclude = {
   responsible: { select: { fullName: true } },
+  project: { select: { id: true, name: true } },
   departments: { include: { department: { select: { name: true } } } },
   members: { include: { user: { select: { fullName: true } } } },
   meetings: {
@@ -45,9 +48,12 @@ export function toMockCommittee(c: CommitteeForMapping): MockCommittee {
   return {
     id: c.id,
     name: c.name,
+    description: c.description ?? undefined,
     responsible: c.responsible.fullName,
     objectives: c.objectives,
     frequency: c.frequency as MockCommittee["frequency"],
+    projectId: c.project?.id,
+    projectName: c.project?.name,
     departments: c.departments.map((d) => d.department.name),
     participants: c.members
       .filter((m) => m.memberType === "PARTICIPANT")

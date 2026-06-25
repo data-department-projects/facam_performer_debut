@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useFieldArray, type Resolver } from "react-hook-form";
+import { useForm, useWatch, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2, ChevronRight } from "lucide-react";
 import { projectSchema, PROJECT_MEMBER_ROLES, type ProjectInput } from "@/lib/schemas/project";
-import { createProject } from "@/actions/projects";
+import { createProject, updateProject } from "@/actions/projects";
 
 type Tab = 1 | 2 | 3 | 4 | 5;
 
@@ -82,9 +82,12 @@ function Select({
 type Props = {
   users: UserOption[];
   departments: DepartmentOption[];
+  projectId?: string;
+  defaultValues?: ProjectInput;
+  onSuccess?: () => void;
 };
 
-export function ProjectForm({ users, departments }: Props) {
+export function ProjectForm({ users, departments, projectId, defaultValues, onSuccess }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>(1);
 
@@ -92,12 +95,11 @@ export function ProjectForm({ users, departments }: Props) {
     register,
     handleSubmit,
     control,
-    watch,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<ProjectInput>({
     resolver: zodResolver(projectSchema) as unknown as Resolver<ProjectInput>,
-    defaultValues: {
+    defaultValues: defaultValues ?? {
       beneficiaryType: "INTERNAL",
       teamMembers: [],
       expectedDeliverables: [],
@@ -130,10 +132,18 @@ export function ProjectForm({ users, departments }: Props) {
     remove: removeLink,
   } = useFieldArray({ control, name: "documentationLinks" });
 
-  // eslint-disable-next-line react-hooks/incompatible-library
-  const beneficiaryType = watch("beneficiaryType");
+  const category = useWatch({ control, name: "category" });
 
   const onSubmit = async (data: ProjectInput) => {
+    if (projectId) {
+      const result = await updateProject(projectId, data);
+      if (!result.success) {
+        setError("root", { message: result.error ?? "Erreur inattendue." });
+        return;
+      }
+      onSuccess?.();
+      return;
+    }
     const result = await createProject(data);
     if (!result.success) {
       setError("root", { message: result.error ?? "Erreur inattendue." });
@@ -218,6 +228,17 @@ export function ProjectForm({ users, departments }: Props) {
                   </Select>
                 </div>
               </div>
+
+              {category === "OTHER" && (
+                <div className="flex flex-col gap-1.5">
+                  <Label required>Précisez la catégorie</Label>
+                  <Input
+                    placeholder="Ex. Développement organisationnel, Formation…"
+                    error={errors.categoryOther?.message}
+                    {...register("categoryOther")}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -226,66 +247,25 @@ export function ProjectForm({ users, departments }: Props) {
             <div className="flex flex-col gap-5">
               <h3 className="text-base font-semibold text-facamDark">Gouvernance & Parties prenantes</h3>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <Label required>Sponsor</Label>
-                  <Select error={errors.sponsorUserId?.message} {...register("sponsorUserId")}>
-                    <option value="">Sélectionner un sponsor</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>{u.fullName}</option>
-                    ))}
-                  </Select>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <Label required>Chef de Projet</Label>
-                  <Select error={errors.projectManagerId?.message} {...register("projectManagerId")}>
-                    <option value="">Sélectionner un chef de projet</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>{u.fullName}</option>
-                    ))}
-                  </Select>
-                </div>
+              <div className="flex flex-col gap-1.5">
+                <Label required>Chef de Projet</Label>
+                <Select error={errors.projectManagerId?.message} {...register("projectManagerId")}>
+                  <option value="">Sélectionner un chef de projet</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>{u.fullName}</option>
+                  ))}
+                </Select>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label required>Type de bénéficiaire</Label>
-                <div className="flex gap-4">
-                  {(["INTERNAL", "EXTERNAL"] as const).map((type) => (
-                    <label key={type} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        value={type}
-                        className="accent-facamBlue"
-                        {...register("beneficiaryType")}
-                      />
-                      <span className="text-sm text-facamBlack">
-                        {type === "INTERNAL" ? "Interne" : "Externe"}
-                      </span>
-                    </label>
+                <Label>Département en charge du projet</Label>
+                <Select {...register("beneficiaryDepartmentId")}>
+                  <option value="">Sélectionner un département</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
-                </div>
+                </Select>
               </div>
-
-              {beneficiaryType === "INTERNAL" ? (
-                <div className="flex flex-col gap-1.5">
-                  <Label>Département bénéficiaire</Label>
-                  <Select {...register("beneficiaryDepartmentId")}>
-                    <option value="">Sélectionner un département</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </Select>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  <Label>Nom du bénéficiaire externe</Label>
-                  <Input
-                    placeholder="Ex. Client XYZ SA"
-                    {...register("beneficiaryExternalName")}
-                  />
-                </div>
-              )}
 
               {/* Équipe projet */}
               <div className="flex flex-col gap-3">
@@ -534,7 +514,9 @@ export function ProjectForm({ users, departments }: Props) {
               disabled={isSubmitting}
               className="inline-flex items-center gap-2 rounded-md bg-facamBlue px-5 py-2 text-sm font-semibold text-facamWhite hover:bg-facamDark transition-colors disabled:opacity-60"
             >
-              {isSubmitting ? "Création en cours..." : "Créer le projet"}
+              {isSubmitting
+              ? (projectId ? "Enregistrement…" : "Création en cours…")
+              : (projectId ? "Enregistrer les modifications" : "Créer le projet")}
             </button>
           )}
         </div>

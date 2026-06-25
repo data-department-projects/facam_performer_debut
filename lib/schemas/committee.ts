@@ -2,11 +2,13 @@ import { z } from "zod";
 
 export const createCommitteeSchema = z.object({
   name: z.string().min(1, "Le nom du comité est requis"),
+  description: z.string().optional(),
   responsibleUserId: z.string().min(1, "Le responsable est requis"),
   objectives: z.string().min(1, "Les objectifs sont requis"),
-  frequency: z.enum(["WEEKLY", "MONTHLY", "QUARTERLY", "ANNUAL", "AD_HOC"], {
+  frequency: z.enum(["WEEKLY", "BIMONTHLY", "MONTHLY", "QUARTERLY", "ANNUAL", "AD_HOC"], {
     error: "Sélectionner une fréquence",
   }),
+  projectId: z.string().nullable().optional(),
   departmentIds: z.array(z.string().min(1)).min(1, "Sélectionner au moins un département"),
   participantIds: z.array(z.string().min(1)).default([]),
   guestIds: z.array(z.string().min(1)).default([]),

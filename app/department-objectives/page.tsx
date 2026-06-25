@@ -94,9 +94,10 @@ export default async function DepartmentObjectivesPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const { role, departmentId } = session.user;
+  const { role, departmentId, name: userName } = session.user;
 
   if (role === "COLLABORATOR") redirect("/objectives");
+  if (role === "MANAGER" && !departmentId) redirect("/dashboard");
 
   const groups = await loadDepartmentGroups(
     role === "MANAGER" ? departmentId : undefined,
@@ -104,7 +105,10 @@ export default async function DepartmentObjectivesPage() {
 
   return (
     <AppShell pageTitle="Objectifs Départements">
-      <DepartmentObjectivesByDept groups={groups} />
+      <DepartmentObjectivesByDept
+          groups={groups}
+          adminName={role === "ADMIN" ? (userName ?? "Administrateur") : undefined}
+        />
     </AppShell>
   );
 }

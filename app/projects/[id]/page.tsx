@@ -5,6 +5,7 @@ import { ProjectDetailTabs } from "@/components/projects/ProjectDetailTabs";
 import type { MockProjectDetail } from "@/components/projects/ProjectFicheView";
 import type { MockMilestone } from "@/components/projects/ProjectMilestonesList";
 import type { GanttTaskData, GanttTeamMember } from "@/components/projects/ProjectGanttView";
+import type { ProjectInput } from "@/lib/schemas/project";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
@@ -194,21 +195,32 @@ export default async function ProjectDetailPage({ params }: Props) {
   const isAdmin = userRole === "ADMIN";
 
   // Charger depuis la DB en priorité (projets créés via le formulaire)
-  const dbProject = await prisma.project.findUnique({
-    where: { id },
-    include: {
-      sponsor: { select: { fullName: true } },
-      projectManager: { select: { id: true, fullName: true } },
-      beneficiaryDepartment: { select: { name: true } },
-      confirmedBy: { select: { fullName: true } },
-      teamMembers: {
-        include: { user: { select: { id: true, fullName: true } } },
+  const [dbProject, users, departments] = await Promise.all([
+    prisma.project.findUnique({
+      where: { id },
+      include: {
+        sponsor: { select: { fullName: true } },
+        projectManager: { select: { id: true, fullName: true } },
+        beneficiaryDepartment: { select: { name: true } },
+        confirmedBy: { select: { fullName: true } },
+        teamMembers: {
+          include: { user: { select: { id: true, fullName: true } } },
+        },
+        milestones: { orderBy: { targetDate: "asc" } },
+        expenses: { orderBy: { expenseDate: "desc" } },
+        ganttTasks: { orderBy: { startDate: "asc" } },
       },
-      milestones: { orderBy: { targetDate: "asc" } },
-      expenses: { orderBy: { expenseDate: "desc" } },
-      ganttTasks: { orderBy: { startDate: "asc" } },
-    },
-  });
+    }),
+    prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, fullName: true },
+      orderBy: { fullName: "asc" },
+    }),
+    prisma.department.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   if (dbProject) {
     // COLLABORATOR / INTERN : uniquement les projets confirmés dont ils sont membres
@@ -268,6 +280,7 @@ export default async function ProjectDetailPage({ params }: Props) {
       label: e.label,
       amount: Number(e.amount),
       expenseType: e.expenseType as "ONE_TIME" | "MONTHLY" | "ANNUAL",
+      expenseCategory: e.expenseCategory ?? null,
       expenseDate: e.expenseDate.toISOString().split("T")[0],
     }));
 
@@ -291,6 +304,34 @@ export default async function ProjectDetailPage({ params }: Props) {
     addMember(dbProject.projectManager.id, dbProject.projectManager.fullName);
     for (const m of dbProject.teamMembers) addMember(m.user.id, m.user.fullName);
 
+    const canEditFiche = isAdmin || dbProject.projectManager.id === currentUserId;
+
+    const editDefaultValues: ProjectInput = {
+      name: dbProject.name,
+      description: dbProject.description ?? "",
+      category: dbProject.category as ProjectInput["category"],
+      strategicPriority: dbProject.strategicPriority as ProjectInput["strategicPriority"],
+      sponsorUserId: dbProject.sponsorUserId,
+      projectManagerId: dbProject.projectManagerId,
+      beneficiaryType: dbProject.beneficiaryType as "INTERNAL" | "EXTERNAL",
+      beneficiaryDepartmentId: dbProject.beneficiaryDepartmentId ?? undefined,
+      beneficiaryExternalName: dbProject.beneficiaryExternalName ?? undefined,
+      estimatedStartDate: dbProject.estimatedStartDate.toISOString().split("T")[0],
+      targetEndDate: dbProject.targetEndDate.toISOString().split("T")[0],
+      actualStartDate: dbProject.actualStartDate?.toISOString().split("T")[0] ?? undefined,
+      actualEndDate: dbProject.actualEndDate?.toISOString().split("T")[0] ?? undefined,
+      initialBudget: Number(dbProject.initialBudget),
+      scopeIncluded: dbProject.scopeIncluded ?? "",
+      scopeExcluded: dbProject.scopeExcluded ?? "",
+      expectedDeliverables: dbProject.expectedDeliverables.map((v) => ({ value: v })),
+      successCriteria: dbProject.successCriteria.map((v) => ({ value: v })),
+      documentationLinks: dbProject.documentationLinks.map((v) => ({ value: v })),
+      teamMembers: dbProject.teamMembers.map((m) => ({
+        userId: m.userId,
+        roleLabel: m.roleLabel as ProjectInput["teamMembers"][number]["roleLabel"],
+      })),
+    };
+
     return (
       <AppShell pageTitle={project.name}>
         <div className="mb-2">
@@ -310,6 +351,10 @@ export default async function ProjectDetailPage({ params }: Props) {
           currentUserId={currentUserId}
           confirmedAt={dbProject.confirmedAt?.toISOString()}
           confirmedByName={dbProject.confirmedBy?.fullName}
+          canEditFiche={canEditFiche}
+          editDefaultValues={editDefaultValues}
+          users={users}
+          departments={departments}
         />
       </AppShell>
     );

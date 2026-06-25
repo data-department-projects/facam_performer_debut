@@ -3,13 +3,14 @@
 import { useState, useTransition } from "react";
 import { Trash2, Plus, Loader2 } from "lucide-react";
 import { createProjectExpense, deleteProjectExpense } from "@/actions/projects";
-import { PROJECT_EXPENSE_TYPES } from "@/lib/schemas/project";
+import { PROJECT_EXPENSE_TYPES, EXPENSE_CATEGORIES } from "@/lib/schemas/project";
 
 export type ProjectExpense = {
   id: string;
   label: string;
   amount: number;
   expenseType: "ONE_TIME" | "MONTHLY" | "ANNUAL";
+  expenseCategory: string | null;
   expenseDate: string;
 };
 
@@ -39,6 +40,8 @@ export function ProjectExpensesList({ expenses, projectId, initialBudget, isEdit
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
   const [expenseType, setExpenseType] = useState<"ONE_TIME" | "MONTHLY" | "ANNUAL">("ONE_TIME");
+  const [expenseCategory, setExpenseCategory] = useState("");
+  const [categoryOther, setCategoryOther] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -51,6 +54,8 @@ export function ProjectExpensesList({ expenses, projectId, initialBudget, isEdit
     setLabel("");
     setAmount("");
     setExpenseType("ONE_TIME");
+    setExpenseCategory("");
+    setCategoryOther("");
     setExpenseDate("");
     setFormError(null);
     setShowForm(false);
@@ -58,11 +63,15 @@ export function ProjectExpensesList({ expenses, projectId, initialBudget, isEdit
 
   function handleAdd() {
     setFormError(null);
+    const resolvedCategory =
+      expenseCategory === "Autres dépenses" ? categoryOther.trim() || "Autres dépenses"
+      : expenseCategory || undefined;
     startTransition(async () => {
       const result = await createProjectExpense(projectId, {
         label: label.trim(),
         amount: parseFloat(amount),
         expenseType,
+        expenseCategory: resolvedCategory,
         expenseDate,
       });
       if (!result.success) {
@@ -151,6 +160,33 @@ export function ProjectExpensesList({ expenses, projectId, initialBudget, isEdit
                   className="rounded-md border border-gray300 px-3 py-2 text-sm text-facamBlack placeholder:text-gray400 focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
                 />
               </div>
+
+              <div className="flex flex-col gap-1 sm:col-span-2">
+                <label className="text-xs font-medium text-gray500">Catégorie</label>
+                <select
+                  value={expenseCategory}
+                  onChange={(e) => { setExpenseCategory(e.target.value); setCategoryOther(""); }}
+                  className="rounded-md border border-gray300 bg-facamWhite px-3 py-2 text-sm text-facamBlack focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
+                >
+                  <option value="">— Sélectionner une catégorie —</option>
+                  {EXPENSE_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              {expenseCategory === "Autres dépenses" && (
+                <div className="flex flex-col gap-1 sm:col-span-2">
+                  <label className="text-xs font-medium text-gray500">Précisez</label>
+                  <input
+                    value={categoryOther}
+                    onChange={(e) => setCategoryOther(e.target.value)}
+                    placeholder="Décrivez la catégorie…"
+                    className="rounded-md border border-gray300 px-3 py-2 text-sm text-facamBlack placeholder:text-gray400 focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
+                  />
+                </div>
+              )}
+
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray500">Montant (FCFA) <span className="text-error">*</span></label>
                 <input
@@ -221,6 +257,7 @@ export function ProjectExpensesList({ expenses, projectId, initialBudget, isEdit
               <thead>
                 <tr className="border-b border-gray200">
                   <th className="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">Libellé</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">Catégorie</th>
                   <th className="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">Type</th>
                   <th className="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">Date</th>
                   <th className="px-5 py-3 text-right text-[10px] font-medium uppercase tracking-widest text-gray500">Montant</th>
@@ -231,6 +268,7 @@ export function ProjectExpensesList({ expenses, projectId, initialBudget, isEdit
                 {expenses.map((expense) => (
                   <tr key={expense.id} className="border-b border-gray200 last:border-0 hover:bg-gray50 transition-colors">
                     <td className="px-5 py-3 text-sm font-medium text-facamBlack">{expense.label}</td>
+                    <td className="px-5 py-3 text-sm text-gray500">{expense.expenseCategory ?? "—"}</td>
                     <td className="px-5 py-3">
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${TYPE_COLORS[expense.expenseType]}`}>
                         {TYPE_LABELS[expense.expenseType]}
@@ -263,7 +301,7 @@ export function ProjectExpensesList({ expenses, projectId, initialBudget, isEdit
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-gray200 bg-gray50">
-                  <td colSpan={isEditable ? 3 : 3} className="px-5 py-3 text-xs font-semibold uppercase tracking-widest text-gray500">
+                  <td colSpan={isEditable ? 4 : 4} className="px-5 py-3 text-xs font-semibold uppercase tracking-widest text-gray500">
                     Total
                   </td>
                   <td className="px-5 py-3 text-right text-sm font-bold text-facamDark">

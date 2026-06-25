@@ -26,9 +26,12 @@ export type MockCommitteeMember = {
 export type MockCommittee = {
   id: string;
   name: string;
+  description?: string;
   responsible: string;
   objectives: string;
-  frequency: "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "AD_HOC";
+  frequency: "WEEKLY" | "BIMONTHLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "AD_HOC";
+  projectId?: string;
+  projectName?: string;
   departments: string[];
   participants: MockCommitteeMember[];
   guests: MockCommitteeMember[];
