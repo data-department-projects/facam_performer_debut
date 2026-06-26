@@ -5,9 +5,16 @@ export const createDepartmentSchema = z.object({
     .string()
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(100, "Le nom ne peut pas dépasser 100 caractères"),
+  parentDepartmentId: z.string().optional(),
 });
 
-export const updateDepartmentSchema = createDepartmentSchema;
+export const updateDepartmentSchema = z.object({
+  name: z
+    .string()
+    .min(2, "Le nom doit contenir au moins 2 caractères")
+    .max(100, "Le nom ne peut pas dépasser 100 caractères"),
+  parentDepartmentId: z.string().nullable().optional(),
+});
 
 export type CreateDepartmentInput = z.infer<typeof createDepartmentSchema>;
 export type UpdateDepartmentInput = z.infer<typeof updateDepartmentSchema>;

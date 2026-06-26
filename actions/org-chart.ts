@@ -23,7 +23,12 @@ export async function createDepartment(
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0].message };
     }
-    await prisma.department.create({ data: { name: parsed.data.name } });
+    await prisma.department.create({
+      data: {
+        name: parsed.data.name,
+        parentDepartmentId: parsed.data.parentDepartmentId ?? null,
+      },
+    });
     revalidatePath("/org-chart");
     return { success: true };
   } catch (error) {
@@ -42,7 +47,13 @@ export async function updateDepartment(
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0].message };
     }
-    await prisma.department.update({ where: { id }, data: { name: parsed.data.name } });
+    await prisma.department.update({
+      where: { id },
+      data: {
+        name: parsed.data.name,
+        parentDepartmentId: parsed.data.parentDepartmentId ?? null,
+      },
+    });
     revalidatePath("/org-chart");
     return { success: true };
   } catch (error) {
@@ -57,9 +68,10 @@ export async function deleteDepartment(
   try {
     await requireRole(["ADMIN"]);
 
-    const [userCount, subDeptCount] = await Promise.all([
+    const [userCount, subDeptCount, childDeptCount] = await Promise.all([
       prisma.user.count({ where: { departmentId: id } }),
       prisma.subDepartment.count({ where: { departmentId: id } }),
+      prisma.department.count({ where: { parentDepartmentId: id } }),
     ]);
 
     if (userCount > 0) {
@@ -72,6 +84,12 @@ export async function deleteDepartment(
       return {
         success: false,
         error: `Ce département contient ${subDeptCount} sous-département${subDeptCount > 1 ? "s" : ""}. Supprimez-les d'abord.`,
+      };
+    }
+    if (childDeptCount > 0) {
+      return {
+        success: false,
+        error: `Ce département contient ${childDeptCount} département${childDeptCount > 1 ? "s" : ""} enfant${childDeptCount > 1 ? "s" : ""}. Supprimez-les d'abord.`,
       };
     }
 

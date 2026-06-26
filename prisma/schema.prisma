@@ -141,16 +141,21 @@ enum GanttTaskStatus {
 // ============================================================
 
 model Department {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  name               String
+  parentDepartmentId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
+  parentDepartment     Department?  @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id])
+  childDepartments     Department[] @relation("DepartmentHierarchy")
   subDepartments       SubDepartment[]
   users                User[]
   committeeLinks       CommitteeDepartment[]
   departmentObjectives DepartmentObjective[]
   projects             Project[]             @relation("BeneficiaryDepartment")
+
+  @@index([parentDepartmentId])
 }
 
 model SubDepartment {
