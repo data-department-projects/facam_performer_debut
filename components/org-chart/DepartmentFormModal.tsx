@@ -1,39 +1,43 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
-import { Loader2, X } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Loader2, X, ChevronDown } from "lucide-react";
 import { createDepartment, updateDepartment } from "@/actions/org-chart";
 
-type Dept = { id: string; name: string };
+type Dept = { id: string; name: string; parentDepartmentId?: string | null };
 
 type Props = {
   open: boolean;
   dept?: Dept;
+  parentDepartmentId?: string;
+  allDepts: { id: string; name: string; parentDepartmentId: string | null }[];
   onClose: () => void;
 };
 
-export function DepartmentFormModal({ open, dept, onClose }: Props) {
-  const [name, setName] = useState("");
+export function DepartmentFormModal({ open, dept, parentDepartmentId, allDepts, onClose }: Props) {
+  const [name, setName] = useState(dept?.name ?? "");
+  const [selectedParentId, setSelectedParentId] = useState<string>(
+    dept?.parentDepartmentId ?? parentDepartmentId ?? "",
+  );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setName(dept?.name ?? "");
-      setError(null);
-    }
-  }, [open, dept]);
-
   if (!open) return null;
+
+  // Exclure le département en cours d'édition et ses descendants pour éviter les cycles
+  const eligibleParents = allDepts.filter((d) => d.id !== dept?.id);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     startTransition(async () => {
+      const payload = {
+        name,
+        parentDepartmentId: selectedParentId || undefined,
+      };
       const result = dept
-        ? await updateDepartment(dept.id, { name })
-        : await createDepartment({ name });
+        ? await updateDepartment(dept.id, payload)
+        : await createDepartment(payload);
       if (result.success) {
         onClose();
       } else {
@@ -55,6 +59,7 @@ export function DepartmentFormModal({ open, dept, onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Nom */}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="dept-name" className="text-sm font-medium text-facamBlack">
               Nom du département
@@ -64,10 +69,46 @@ export function DepartmentFormModal({ open, dept, onClose }: Props) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex : Direction Générale"
+              placeholder="Ex : Marketing"
               className="rounded-md border border-gray300 bg-facamWhite px-3 py-2 text-sm text-facamBlack placeholder:text-gray400 focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
               autoFocus
             />
+          </div>
+
+          {/* Département parent (optionnel) */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="dept-parent" className="text-sm font-medium text-facamBlack">
+              Rattaché à{" "}
+              <span className="font-normal text-gray400">(optionnel)</span>
+            </label>
+            <div className="relative">
+              <select
+                id="dept-parent"
+                value={selectedParentId}
+                onChange={(e) => setSelectedParentId(e.target.value)}
+                className="w-full appearance-none rounded-md border border-gray300 bg-facamWhite px-3 py-2 pr-8 text-sm text-facamBlack focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
+              >
+                <option value="">— Aucun (département mère) —</option>
+                {eligibleParents.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray400"
+              />
+            </div>
+            {selectedParentId && (
+              <p className="text-xs text-gray400">
+                Ce département apparaîtra à l&apos;intérieur de{" "}
+                <span className="font-medium text-facamBlue">
+                  {eligibleParents.find((d) => d.id === selectedParentId)?.name}
+                </span>{" "}
+                dans l&apos;organigramme.
+              </p>
+            )}
           </div>
 
           {error && (
