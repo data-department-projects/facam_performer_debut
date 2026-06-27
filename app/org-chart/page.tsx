@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Users } from "lucide-react";
-import { OrgTree } from "@/components/org-chart/OrgTree";
-import { OrgChartView } from "@/components/org-chart/OrgChartView";
+import { TeamsOrgView } from "@/components/org-chart/TeamsOrgView";
+import { OrgStructureDrawer } from "@/components/org-chart/OrgStructureDrawer";
 import { AppShell } from "@/components/layout/AppShell";
 import type { Role } from "@/app/generated/prisma/client";
 
@@ -29,13 +28,15 @@ export type OrgDeptNode = {
   children: OrgDeptNode[];
 };
 
-export type OrgDeptFlat = {
+export type UserNode = {
   id: string;
-  name: string;
-  parentDepartmentId: string | null;
-  parentName: string | null;
-  users: OrgUser[];
-  subDepartments: OrgSubDept[];
+  fullName: string;
+  email: string;
+  role: string;
+  departmentName: string;
+  teamName: string | null;
+  managerId: string | null;
+  directReportIds: string[];
 };
 
 // ── Construction de l'arbre depuis une liste plate ────────────────────────────
@@ -54,7 +55,6 @@ function buildDeptTree(depts: Omit<OrgDeptNode, "children">[]): OrgDeptNode[] {
     }
   }
 
-  // Tri alphabétique des enfants à chaque niveau
   function sortNode(node: OrgDeptNode) {
     node.children.sort((a, b) => a.name.localeCompare(b.name, "fr"));
     node.children.forEach(sortNode);
@@ -65,7 +65,7 @@ function buildDeptTree(depts: Omit<OrgDeptNode, "children">[]): OrgDeptNode[] {
   return roots;
 }
 
-// ── Requête commune ───────────────────────────────────────────────────────────
+// ── Requête Prisma ────────────────────────────────────────────────────────────
 
 const deptInclude = {
   users: {
@@ -100,50 +100,98 @@ export default async function OrgChartPage() {
   const role = session.user.role as Role;
   const isAdmin = role === "ADMIN";
 
-  if (isAdmin) {
-    const [rawDepts, allUsers] = await Promise.all([
-      prisma.department.findMany({
-        include: deptInclude,
-        orderBy: { name: "asc" },
-      }),
-      prisma.user.findMany({
-        where: { isActive: true },
-        select: { id: true, fullName: true, role: true },
-        orderBy: { fullName: "asc" },
-      }),
-    ]);
+  // Tous les rôles voient toute l'organisation en lecture
+  const [rawDepts, allUsers] = await Promise.all([
+    prisma.department.findMany({
+      include: deptInclude,
+      orderBy: { name: "asc" },
+    }),
+    prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, fullName: true, role: true },
+      orderBy: { fullName: "asc" },
+    }),
+  ]);
 
-    // Arbre pour OrgTree (hiérarchie complète)
-    const deptTree = buildDeptTree(
-      rawDepts.map((d) => ({
-        id: d.id,
-        name: d.name,
-        parentDepartmentId: d.parentDepartmentId,
-        subDepartments: d.subDepartments.map((sd) => ({
-          id: sd.id,
-          name: sd.name,
-          departmentId: sd.departmentId,
-          teams: sd.teams.map((t) => ({
-            id: t.id,
-            name: t.name,
-            subDepartmentId: t.subDepartmentId,
-            manager: t.manager
-              ? { id: t.manager.id, fullName: t.manager.fullName, email: t.manager.email, role: t.manager.role }
-              : null,
-            members: t.members,
-          })),
-        })),
-      })),
-    );
+  // ── Construction du UserNode[] flat ──────────────────────────────────────
 
-    // Liste plate pour l'annuaire (OrgChartView) — avec nom du parent
-    const parentNameMap = new Map(rawDepts.map((d) => [d.id, d.name]));
-    const deptFlat: OrgDeptFlat[] = rawDepts.map((d) => ({
+  // Map userId → managerId (déduit de l'équipe dont l'utilisateur est membre)
+  const managerOfUser = new Map<string, string>();
+  // Map userId → teamName
+  const teamOfUser = new Map<string, string>();
+  // Map managerId → directReportIds
+  const directReportsOf = new Map<string, string[]>();
+
+  for (const dept of rawDepts) {
+    for (const sd of dept.subDepartments) {
+      for (const team of sd.teams) {
+        for (const member of team.members) {
+          if (team.manager && member.id !== team.manager.id) {
+            managerOfUser.set(member.id, team.manager.id);
+          }
+          teamOfUser.set(member.id, team.name);
+        }
+        if (team.manager) {
+          const existing = directReportsOf.get(team.manager.id) ?? [];
+          const newReports = team.members
+            .filter((m) => m.id !== team.manager!.id)
+            .map((m) => m.id);
+          directReportsOf.set(team.manager.id, [...new Set([...existing, ...newReports])]);
+        }
+      }
+    }
+  }
+
+  // Map userId → departmentName
+  const deptOfUser = new Map<string, string>();
+  for (const dept of rawDepts) {
+    for (const user of dept.users) {
+      deptOfUser.set(user.id, dept.name);
+    }
+    for (const sd of dept.subDepartments) {
+      for (const team of sd.teams) {
+        for (const member of team.members) {
+          if (!deptOfUser.has(member.id)) {
+            deptOfUser.set(member.id, dept.name);
+          }
+        }
+        if (team.manager && !deptOfUser.has(team.manager.id)) {
+          deptOfUser.set(team.manager.id, dept.name);
+        }
+      }
+    }
+  }
+
+  // Collecte de tous les utilisateurs uniques
+  const allUsersSet = new Map<string, OrgUser>();
+  for (const dept of rawDepts) {
+    for (const u of dept.users) allUsersSet.set(u.id, u);
+    for (const sd of dept.subDepartments) {
+      for (const team of sd.teams) {
+        if (team.manager) allUsersSet.set(team.manager.id, team.manager);
+        for (const m of team.members) allUsersSet.set(m.id, m);
+      }
+    }
+  }
+
+  const userNodes: UserNode[] = Array.from(allUsersSet.values()).map((u) => ({
+    id: u.id,
+    fullName: u.fullName,
+    email: u.email,
+    role: u.role,
+    departmentName: deptOfUser.get(u.id) ?? "—",
+    teamName: teamOfUser.get(u.id) ?? null,
+    managerId: managerOfUser.get(u.id) ?? null,
+    directReportIds: directReportsOf.get(u.id) ?? [],
+  }));
+
+  // ── Données Admin pour le drawer CRUD ────────────────────────────────────
+
+  const deptTree = buildDeptTree(
+    rawDepts.map((d) => ({
       id: d.id,
       name: d.name,
       parentDepartmentId: d.parentDepartmentId,
-      parentName: d.parentDepartmentId ? (parentNameMap.get(d.parentDepartmentId) ?? null) : null,
-      users: d.users,
       subDepartments: d.subDepartments.map((sd) => ({
         id: sd.id,
         name: sd.name,
@@ -158,72 +206,38 @@ export default async function OrgChartPage() {
           members: t.members,
         })),
       })),
-    }));
+    })),
+  );
 
-    // Liste plate de tous les depts pour le sélecteur du modal
-    const allDepts = rawDepts.map((d) => ({ id: d.id, name: d.name, parentDepartmentId: d.parentDepartmentId }));
-
-    return (
-      <AppShell pageTitle="Organigramme">
-        <div className="flex flex-col gap-12">
-          {/* Section 1 — Arbre de gestion (CRUD) */}
-          <OrgTree deptTree={deptTree} allDepts={allDepts} allUsers={allUsers} isAdmin={true} />
-
-          {/* Section 2 — Annuaire des collaborateurs */}
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center gap-4">
-              <div className="h-px flex-1 bg-gray200" />
-              <div className="flex items-center gap-2 rounded-full border border-gray200 bg-facamWhite px-4 py-1.5 shadow-sm">
-                <Users size={13} className="text-facamBlue" />
-                <span className="text-xs font-bold uppercase tracking-widest text-gray500">
-                  Annuaire des collaborateurs
-                </span>
-              </div>
-              <div className="h-px flex-1 bg-gray200" />
-            </div>
-
-            <OrgChartView departments={deptFlat} />
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
-
-  // Non-Admin : restreint au propre département de l'utilisateur
-  const userDepartmentId = session.user.departmentId;
-  if (!userDepartmentId) redirect("/dashboard");
-
-  const rawDepts = await prisma.department.findMany({
-    where: { id: userDepartmentId },
-    include: deptInclude,
-    orderBy: { name: "asc" },
-  });
-
-  const deptFlat: OrgDeptFlat[] = rawDepts.map((d) => ({
+  const allDepts = rawDepts.map((d) => ({
     id: d.id,
     name: d.name,
     parentDepartmentId: d.parentDepartmentId,
-    parentName: null,
-    users: d.users,
-    subDepartments: d.subDepartments.map((sd) => ({
-      id: sd.id,
-      name: sd.name,
-      departmentId: sd.departmentId,
-      teams: sd.teams.map((t) => ({
-        id: t.id,
-        name: t.name,
-        subDepartmentId: t.subDepartmentId,
-        manager: t.manager
-          ? { id: t.manager.id, fullName: t.manager.fullName, email: t.manager.email, role: t.manager.role }
-          : null,
-        members: t.members,
-      })),
-    })),
   }));
 
   return (
     <AppShell pageTitle="Organigramme">
-      <OrgChartView departments={deptFlat} />
+      <div className="flex flex-col gap-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray400">
+            {userNodes.length} collaborateur{userNodes.length !== 1 ? "s" : ""} actif{userNodes.length !== 1 ? "s" : ""}
+          </p>
+          {isAdmin && (
+            <OrgStructureDrawer
+              deptTree={deptTree}
+              allDepts={allDepts}
+              allUsers={allUsers}
+            />
+          )}
+        </div>
+
+        {/* Vue Teams-style */}
+        <TeamsOrgView
+          userNodes={userNodes}
+          currentUserId={session.user.id}
+        />
+      </div>
     </AppShell>
   );
 }
