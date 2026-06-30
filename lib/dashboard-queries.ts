@@ -423,7 +423,7 @@ async function countActionsToProcess(ctx: DashboardContext): Promise<number> {
   if (ctx.role === "ADMIN") {
     const [pendingProjects, submittedPlanners, overdueActions] = await Promise.all([
       prisma.project.count({ where: { isConfirmed: false } }),
-      prisma.weekPlanner.count({ where: { status: "SUBMITTED" } }),
+      prisma.weekPlanner.count({ where: { status: "SUBMITTED", user: { role: "MANAGER" } } }),
       prisma.committeeAction.count({
         where: { status: "PENDING", dueDate: { lt: today } },
       }),
@@ -840,7 +840,7 @@ async function getSmartAlerts(
       // Week Planners soumis non validés depuis > 2 jours
       const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000);
       const stalePlanners = await prisma.weekPlanner.count({
-        where: { status: "SUBMITTED", createdAt: { lt: twoDaysAgo } },
+        where: { status: "SUBMITTED", user: { role: "MANAGER" }, createdAt: { lt: twoDaysAgo } },
       });
 
       if (stalePlanners > 0) {
