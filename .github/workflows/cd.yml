@@ -4,17 +4,17 @@ on:
   workflow_run:
     workflows: ["CI — FACAM PERFORMER"]
     types: [completed]
-    branches: [main, staging]
+    branches: [main]
 
 jobs:
   deploy:
-    name: Migrate + Deploy (${{ github.event.workflow_run.head_branch }})
+    name: Migrate + Deploy (production)
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     timeout-minutes: 15
 
     environment:
-      name: ${{ github.event.workflow_run.head_branch == 'main' && 'production' || 'staging' }}
+      name: production
 
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,6 @@ jobs:
 
       # Snapshot RDS avant migration — rollback possible en 5-10 min via AWS Console
       - name: Snapshot RDS pré-migration
-        if: github.event.workflow_run.head_branch == 'main'
         run: |
           aws rds create-db-snapshot \
             --db-instance-identifier facam-performer-prod \
@@ -49,12 +48,9 @@ jobs:
       - name: Deploy to Vercel
         id: deploy
         run: |
-          IS_PROD="${{ github.event.workflow_run.head_branch == 'main' }}"
-          ENV_FLAG=$([ "$IS_PROD" = "true" ] && echo "production" || echo "preview")
-
-          npx vercel pull --yes --environment="$ENV_FLAG" --token=${{ secrets.VERCEL_TOKEN }}
-          npx vercel build $([ "$IS_PROD" = "true" ] && echo "--prod" || echo "") --token=${{ secrets.VERCEL_TOKEN }}
-          URL=$(npx vercel deploy --prebuilt $([ "$IS_PROD" = "true" ] && echo "--prod" || echo "") --token=${{ secrets.VERCEL_TOKEN }})
+          npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          URL=$(npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$URL" >> $GITHUB_OUTPUT
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}

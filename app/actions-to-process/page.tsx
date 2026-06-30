@@ -39,7 +39,7 @@ export default async function ActionsToProcessPage() {
         status: "SUBMITTED",
         ...(role === "MANAGER"
           ? { user: { team: { managerId: userId } } }
-          : {}),
+          : { user: { role: "MANAGER" } }),
       },
       include: {
         user: { select: { fullName: true } },
