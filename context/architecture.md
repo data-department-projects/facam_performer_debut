@@ -553,7 +553,7 @@ Une réunion planifiée pour un comité existant (un comité peut avoir plusieur
 | Colonne | Type | Notes |
 | --- | --- | --- |
 | id | uuid | |
-| committeeId | uuid | FK Committee |
+| committeeId | uuid | FK Committee |d
 | meetingDate | date | Date de la réunion |
 | startDateTime | timestamp | Date/heure de début |
 | endDateTime | timestamp | Date/heure de fin |
