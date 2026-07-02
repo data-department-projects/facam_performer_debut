@@ -136,6 +136,13 @@ enum GanttTaskStatus {
   BLOCKED
 }
 
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  DELAYED
+}
+
 // ============================================================
 // ORGANISATION
 // ============================================================
@@ -147,8 +154,8 @@ model Department {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  parentDepartment     Department?  @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id])
-  childDepartments     Department[] @relation("DepartmentHierarchy")
+  parentDepartment     Department?           @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id])
+  childDepartments     Department[]          @relation("DepartmentHierarchy")
   subDepartments       SubDepartment[]
   users                User[]
   committeeLinks       CommitteeDepartment[]
@@ -192,39 +199,40 @@ model Team {
 // ============================================================
 
 model User {
-  id                     String              @id @default(uuid())
-  fullName               String
-  email                  String              @unique
-  passwordHash           String
-  role                   Role
-  departmentId           String
-  teamId                 String?
-  isActive               Boolean             @default(true)
-  notificationConsent    NotificationConsent @default(NOT_ASKED)
-  notificationConsentAt  DateTime?
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
+  id                    String              @id @default(uuid())
+  fullName              String
+  email                 String              @unique
+  passwordHash          String
+  role                  Role
+  departmentId          String
+  teamId                String?
+  isActive              Boolean             @default(true)
+  notificationConsent   NotificationConsent @default(NOT_ASKED)
+  notificationConsentAt DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
-  department              Department          @relation(fields: [departmentId], references: [id])
-  team                    Team?               @relation("TeamMembers", fields: [teamId], references: [id])
-  managedTeams            Team[]              @relation("TeamManager")
-  passwordResetOtps       PasswordResetOtp[]
-  pushSubscriptions       PushSubscription[]
-  sponsoredProjects       Project[]           @relation("ProjectSponsor")
-  managedProjects         Project[]           @relation("ProjectManager")
-  confirmedProjects       Project[]           @relation("ProjectConfirmer")
-  projectMemberships      ProjectTeamMember[]
-  ganttTasks              GanttTask[]
-  managedCommittees       Committee[]
-  committeeMemberships    CommitteeMember[]
-  assignedActions         CommitteeAction[]
-  weekPlanners            WeekPlanner[]
-  validatedWeekPlanners   WeekPlanner[]       @relation("WeekPlannerValidator")
-  timeEntries             TimeEntry[]
-  objectives              Objective[]
-  projectExpenses         ProjectExpense[]    @relation("ExpenseCreator")
-  bugReports              BugReport[]
-  attachments             Attachment[]
+  department            Department          @relation(fields: [departmentId], references: [id])
+  team                  Team?               @relation("TeamMembers", fields: [teamId], references: [id])
+  managedTeams          Team[]              @relation("TeamManager")
+  passwordResetOtps     PasswordResetOtp[]
+  pushSubscriptions     PushSubscription[]
+  sponsoredProjects     Project[]           @relation("ProjectSponsor")
+  managedProjects       Project[]           @relation("ProjectManager")
+  confirmedProjects     Project[]           @relation("ProjectConfirmer")
+  projectMemberships    ProjectTeamMember[]
+  ganttTasks            GanttTask[]
+  managedCommittees     Committee[]
+  committeeMemberships  CommitteeMember[]
+  assignedActions       CommitteeAction[]
+  weekPlanners          WeekPlanner[]
+  validatedWeekPlanners WeekPlanner[]       @relation("WeekPlannerValidator")
+  timeEntries           TimeEntry[]
+  objectives            Objective[]
+  projectExpenses       ProjectExpense[]    @relation("ExpenseCreator")
+  bugReports            BugReport[]
+  attachments           Attachment[]
+  responsibleMilestones ProjectMilestone[]
 
   @@index([departmentId])
   @@index([teamId])
@@ -261,46 +269,46 @@ model PushSubscription {
 // ============================================================
 
 model Project {
-  id                       String          @id @default(uuid())
-  code                     String          @unique
-  name                     String
-  description              String?
-  category                 ProjectCategory
-  categoryOther            String?
-  strategicPriority        StrategicPriority
-  currentStatus            ProjectStatus   @default(PENDING)
-  sponsorUserId            String
-  projectManagerId         String
-  beneficiaryType          BeneficiaryType
-  beneficiaryDepartmentId  String?
-  beneficiaryExternalName  String?
-  estimatedStartDate       DateTime
-  actualStartDate          DateTime?
-  targetEndDate            DateTime
-  actualEndDate            DateTime?
-  initialBudget            Decimal         @default(0)
-  scopeIncluded            String?
-  scopeExcluded            String?
-  expectedDeliverables     String[]
-  successCriteria          String[]
-  documentationLinks       String[]
-  isConfirmed              Boolean         @default(false)
-  confirmedById            String?
-  confirmedAt              DateTime?
-  confirmationNote         String?
-  createdAt                DateTime        @default(now())
-  updatedAt                DateTime        @updatedAt
+  id                      String            @id @default(uuid())
+  code                    String            @unique
+  name                    String
+  description             String?
+  category                ProjectCategory
+  categoryOther           String?
+  strategicPriority       StrategicPriority
+  currentStatus           ProjectStatus     @default(PENDING)
+  sponsorUserId           String
+  projectManagerId        String
+  beneficiaryType         BeneficiaryType
+  beneficiaryDepartmentId String?
+  beneficiaryExternalName String?
+  estimatedStartDate      DateTime
+  actualStartDate         DateTime?
+  targetEndDate           DateTime
+  actualEndDate           DateTime?
+  initialBudget           Decimal           @default(0)
+  scopeIncluded           String?
+  scopeExcluded           String?
+  expectedDeliverables    String[]
+  successCriteria         String[]
+  documentationLinks      String[]
+  isConfirmed             Boolean           @default(false)
+  confirmedById           String?
+  confirmedAt             DateTime?
+  confirmationNote        String?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
 
-  sponsor              User               @relation("ProjectSponsor", fields: [sponsorUserId], references: [id])
-  projectManager       User               @relation("ProjectManager", fields: [projectManagerId], references: [id])
-  confirmedBy          User?              @relation("ProjectConfirmer", fields: [confirmedById], references: [id])
-  beneficiaryDepartment Department?       @relation("BeneficiaryDepartment", fields: [beneficiaryDepartmentId], references: [id])
-  teamMembers          ProjectTeamMember[]
-  milestones           ProjectMilestone[]
-  ganttTasks           GanttTask[]
-  weekPlannerTasks     WeekPlannerTask[]
-  expenses             ProjectExpense[]
-  committees           Committee[]
+  sponsor               User                @relation("ProjectSponsor", fields: [sponsorUserId], references: [id])
+  projectManager        User                @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  confirmedBy           User?               @relation("ProjectConfirmer", fields: [confirmedById], references: [id])
+  beneficiaryDepartment Department?         @relation("BeneficiaryDepartment", fields: [beneficiaryDepartmentId], references: [id])
+  teamMembers           ProjectTeamMember[]
+  milestones            ProjectMilestone[]
+  ganttTasks            GanttTask[]
+  weekPlannerTasks      WeekPlannerTask[]
+  expenses              ProjectExpense[]
+  committees            Committee[]
 
   @@index([projectManagerId])
   @@index([isConfirmed])
@@ -315,7 +323,7 @@ model ProjectExpense {
   expenseCategory String?
   expenseDate     DateTime
   createdById     String
-  createdAt   DateTime           @default(now())
+  createdAt       DateTime           @default(now())
 
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdBy User    @relation("ExpenseCreator", fields: [createdById], references: [id])
@@ -339,16 +347,20 @@ model ProjectTeamMember {
 }
 
 model ProjectMilestone {
-  id           String    @id @default(uuid())
-  projectId    String
-  title        String
-  targetDate   DateTime
-  achievedDate DateTime?
-  createdAt    DateTime  @default(now())
+  id                String          @id @default(uuid())
+  projectId         String
+  title             String
+  targetDate        DateTime
+  achievedDate      DateTime?
+  responsibleUserId String?
+  status            MilestoneStatus @default(PENDING)
+  createdAt         DateTime        @default(now())
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  responsible User?   @relation(fields: [responsibleUserId], references: [id])
 
   @@index([projectId])
+  @@index([responsibleUserId])
 }
 
 model GanttTask {
@@ -432,7 +444,7 @@ model CommitteeMeeting {
   reminderSentAt DateTime?
   createdAt      DateTime  @default(now())
 
-  committee Committee       @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  committee Committee         @relation(fields: [committeeId], references: [id], onDelete: Cascade)
   actions   CommitteeAction[]
 
   @@index([committeeId])
@@ -490,8 +502,8 @@ model WeekPlannerTask {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
-  weekPlanner WeekPlanner  @relation(fields: [weekPlannerId], references: [id], onDelete: Cascade)
-  project     Project?     @relation(fields: [projectId], references: [id])
+  weekPlanner WeekPlanner @relation(fields: [weekPlannerId], references: [id], onDelete: Cascade)
+  project     Project?    @relation(fields: [projectId], references: [id])
   timeEntries TimeEntry[]
 
   @@index([weekPlannerId])
@@ -537,16 +549,17 @@ model Objective {
 }
 
 model KeyResult {
-  id            String          @id @default(uuid())
-  objectiveId   String
-  description   String
-  targetValue   Decimal?
-  currentValue  Decimal?
-  evidenceNote  String?
-  dueDate       DateTime?
-  status        KeyResultStatus @default(NOT_STARTED)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id             String          @id @default(uuid())
+  objectiveId    String
+  description    String
+  targetValue    Decimal?
+  currentValue   Decimal?
+  evidenceNote   String?
+  certificateUrl String?
+  dueDate        DateTime?
+  status         KeyResultStatus @default(NOT_STARTED)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   objective   Objective    @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
   attachments Attachment[]
@@ -555,15 +568,15 @@ model KeyResult {
 }
 
 model DepartmentObjective {
-  id                       String             @id @default(uuid())
-  departmentId             String
-  title                    String
-  frequency                ObjectiveFrequency
-  aggregatedProgressPercent Int               @default(0)
-  periodStart              DateTime
-  periodEnd                DateTime
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
+  id                        String             @id @default(uuid())
+  departmentId              String
+  title                     String
+  frequency                 ObjectiveFrequency
+  aggregatedProgressPercent Int                @default(0)
+  periodStart               DateTime
+  periodEnd                 DateTime
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
 
   department Department @relation(fields: [departmentId], references: [id])
 
@@ -575,15 +588,15 @@ model DepartmentObjective {
 // ============================================================
 
 model Attachment {
-  id            String                @id @default(uuid())
-  s3Key         String
-  fileName      String
-  contentType   String
-  relatedType   AttachmentRelatedType
-  relatedId     String
-  uploadedById  String
-  keyResultId   String?
-  createdAt     DateTime              @default(now())
+  id           String                @id @default(uuid())
+  s3Key        String
+  fileName     String
+  contentType  String
+  relatedType  AttachmentRelatedType
+  relatedId    String
+  uploadedById String
+  keyResultId  String?
+  createdAt    DateTime              @default(now())
 
   uploadedBy User       @relation(fields: [uploadedById], references: [id])
   keyResult  KeyResult? @relation(fields: [keyResultId], references: [id])

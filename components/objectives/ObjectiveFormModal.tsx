@@ -21,6 +21,14 @@ export function ObjectiveFormModal({ open, onClose, onAdd }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function updateRisk(i: number, value: string) {
+    setRisks((prev) => prev.map((r, idx) => (idx === i ? value : r)));
+  }
+
+  function removeRisk(i: number) {
+    setRisks((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
   if (!open) return null;
 
   function handleClose() {
@@ -228,20 +236,14 @@ export function ObjectiveFormModal({ open, onClose, onAdd }: Props) {
                   <input
                     type="text"
                     value={risk}
-                    onChange={(e) =>
-                      setRisks((prev) =>
-                        prev.map((r, idx) => (idx === i ? e.target.value : r)),
-                      )
-                    }
+                    onChange={(e) => updateRisk(i, e.target.value)}
                     placeholder={`Risque ${i + 1}…`}
                     className="flex-1 rounded-md border border-gray300 bg-facamWhite px-3 py-2 text-sm text-facamBlack placeholder:text-gray400 focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
                   />
                   {risks.length > 1 && (
                     <button
                       type="button"
-                      onClick={() =>
-                        setRisks((prev) => prev.filter((_, idx) => idx !== i))
-                      }
+                      onClick={() => removeRisk(i)}
                       className="flex-shrink-0 text-gray400 hover:text-error"
                     >
                       <Trash2 size={14} />

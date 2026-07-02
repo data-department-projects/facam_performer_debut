@@ -57,6 +57,10 @@ export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, ass
     }));
   }
 
+  function resetSaveStateAfter(taskId: string, delay: number) {
+    setTimeout(() => setSaveState((prev) => ({ ...prev, [taskId]: "idle" })), delay);
+  }
+
   function handleSave(task: WeekTask) {
     const state = execState[task.id] ?? { status: task.status, hours: "", comment: task.comment ?? "" };
     setSaveState((prev) => ({ ...prev, [task.id]: "saving" }));
@@ -71,14 +75,10 @@ export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, ass
 
       if (result.success) {
         setSaveState((prev) => ({ ...prev, [task.id]: "saved" }));
-        setTimeout(() => {
-          setSaveState((prev) => ({ ...prev, [task.id]: "idle" }));
-        }, 2000);
+        resetSaveStateAfter(task.id, 2000);
       } else {
         setSaveState((prev) => ({ ...prev, [task.id]: "error" }));
-        setTimeout(() => {
-          setSaveState((prev) => ({ ...prev, [task.id]: "idle" }));
-        }, 3000);
+        resetSaveStateAfter(task.id, 3000);
       }
     });
   }

@@ -1,12 +1,6 @@
 export type ObjectiveType = "PERFORMANCE" | "SKILLS_DEVELOPMENT";
 export type KeyResultStatus = "NOT_STARTED" | "IN_PROGRESS" | "DONE";
 
-export type Certificate = {
-  id: string;
-  fileName: string;
-  signedUrl: string;
-};
-
 export type KeyResultWithCert = {
   id: string;
   description: string;
@@ -15,7 +9,7 @@ export type KeyResultWithCert = {
   evidenceNote: string | null;
   dueDate: string | null;
   status: KeyResultStatus;
-  certificate: Certificate | null;
+  certificateUrl: string | null;
 };
 
 export type ObjectiveWithKeyResults = {

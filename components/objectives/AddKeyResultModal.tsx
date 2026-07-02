@@ -19,7 +19,7 @@ export function AddKeyResultModal({
   objectiveType,
   onClose,
   onAdd,
-}: Props) {
+}: Readonly<Props>) {
   const [description, setDescription] = useState("");
   const [targetValue, setTargetValue] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -69,7 +69,7 @@ export function AddKeyResultModal({
       evidenceNote: null,
       dueDate: dueDate !== "" ? dueDate : null,
       status: "NOT_STARTED",
-      certificate: null,
+      certificateUrl: null,
     };
 
     onAdd(newKR);

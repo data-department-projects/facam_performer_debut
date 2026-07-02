@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { httpUrlSchema } from "./url";
 
 export const createObjectiveSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
@@ -31,6 +32,7 @@ export const updateKeyResultProgressSchema = z.object({
   status: z.enum(["NOT_STARTED", "IN_PROGRESS", "DONE"]),
   currentValue: z.number().min(0).nullable().optional(),
   evidenceNote: z.string().nullable().optional(),
+  certificateUrl: z.union([z.literal(""), httpUrlSchema]).nullable().optional(),
 });
 
 export type CreateObjectiveInput = z.infer<typeof createObjectiveSchema>;
