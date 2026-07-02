@@ -98,3 +98,16 @@ export const projectExpenseSchema = z.object({
 });
 
 export type ProjectExpenseInput = z.infer<typeof projectExpenseSchema>;
+
+export const MILESTONE_STATUSES = ["PENDING", "IN_PROGRESS", "DONE", "DELAYED"] as const;
+
+export type MilestoneStatus = (typeof MILESTONE_STATUSES)[number];
+
+export const milestoneSchema = z.object({
+  title: z.string().min(1, "Le titre est requis"),
+  targetDate: z.string().min(1, "La date de réalisation est requise"),
+  responsibleUserId: z.string().optional(),
+  status: z.enum(MILESTONE_STATUSES).default("PENDING"),
+});
+
+export type MilestoneInput = z.infer<typeof milestoneSchema>;

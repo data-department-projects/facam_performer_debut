@@ -141,6 +141,7 @@ export function ProjectDetailTabs({ project, milestones, expenses, ganttTasks, t
           milestones={milestones}
           projectId={projectId}
           isEditable={isEditable}
+          teamMembers={teamMembersForGantt}
         />
       )}
       {activeTab === "finances" && (
