@@ -19,7 +19,7 @@ export function AddKeyResultModal({
   objectiveType,
   onClose,
   onAdd,
-}: Props) {
+}: Readonly<Props>) {
   const [description, setDescription] = useState("");
   const [targetValue, setTargetValue] = useState("");
   const [dueDate, setDueDate] = useState("");

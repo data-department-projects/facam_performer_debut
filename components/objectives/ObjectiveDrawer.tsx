@@ -33,7 +33,7 @@ export function ObjectiveDrawer({
   onAddKR,
   onDelete,
   readonly = false,
-}: Props) {
+}: Readonly<Props>) {
   const [selectedKR, setSelectedKR] = useState<KeyResultWithCert | null>(null);
   const [isAddKROpen, setIsAddKROpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);

@@ -30,7 +30,7 @@ export function ProjectMilestonesList({
   projectId,
   isEditable = false,
   teamMembers = [],
-}: Props) {
+}: Readonly<Props>) {
   const [showModal, setShowModal] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);

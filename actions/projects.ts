@@ -161,7 +161,7 @@ export async function deleteMilestone(
         },
       },
     });
-    if (!milestone || milestone.projectId !== projectId) {
+    if (milestone?.projectId !== projectId) {
       return { success: false, error: "Jalon introuvable ou accès refusé." };
     }
 

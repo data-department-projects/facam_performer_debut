@@ -22,6 +22,18 @@ type Props = {
 
 const DAYS: PlannedDay[] = ["MON", "TUE", "WED", "THU", "FRI"];
 
+function replaceTaskById(tasks: WeekTask[], id: string, replacement: WeekTask): WeekTask[] {
+  return tasks.map((t) => (t.id === id ? replacement : t));
+}
+
+function removeTaskById(tasks: WeekTask[], id: string): WeekTask[] {
+  return tasks.filter((t) => t.id !== id);
+}
+
+function lockAllTasks(tasks: WeekTask[]): WeekTask[] {
+  return tasks.map((t) => ({ ...t, isLocked: true }));
+}
+
 export function CollaboratorWeekPlannerView({
   planner: initialPlanner,
   confirmedProjects,
@@ -94,12 +106,12 @@ export function CollaboratorWeekPlannerView({
         const confirmed = { ...result.data, project: result.data.project ?? null };
         setPlanner((prev) => ({
           ...prev,
-          tasks: prev.tasks.map((t) => (t.id === optimisticTask.id ? confirmed : t)),
+          tasks: replaceTaskById(prev.tasks, optimisticTask.id, confirmed),
         }));
       } else {
         setPlanner((prev) => ({
           ...prev,
-          tasks: prev.tasks.filter((t) => t.id !== optimisticTask.id),
+          tasks: removeTaskById(prev.tasks, optimisticTask.id),
         }));
       }
     });
@@ -125,7 +137,7 @@ export function CollaboratorWeekPlannerView({
         setPlanner((prev) => ({
           ...prev,
           status: noValidation ? "VALIDATED" : "SUBMITTED",
-          tasks: noValidation ? prev.tasks.map((t) => ({ ...t, isLocked: true })) : prev.tasks,
+          tasks: noValidation ? lockAllTasks(prev.tasks) : prev.tasks,
         }));
       }
     });

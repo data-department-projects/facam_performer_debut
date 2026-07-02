@@ -11,7 +11,7 @@ const STATUS_CONFIG: Record<MilestoneStatus, { label: string; className: string 
   DELAYED: { label: "En retard", className: "bg-errorLight text-error" },
 };
 
-export function MilestoneStatusBadge({ status }: Props) {
+export function MilestoneStatusBadge({ status }: Readonly<Props>) {
   const { label, className } = STATUS_CONFIG[status];
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>

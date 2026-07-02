@@ -22,7 +22,7 @@ type Props = {
   onClose: () => void;
 };
 
-export function MilestoneFormModal({ projectId, teamMembers, onClose }: Props) {
+export function MilestoneFormModal({ projectId, teamMembers, onClose }: Readonly<Props>) {
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
 

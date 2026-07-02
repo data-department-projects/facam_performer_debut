@@ -24,7 +24,7 @@ export function KeyResultCard({
   objectiveType,
   onUpdate,
   readonly = false,
-}: Props) {
+}: Readonly<Props>) {
   const showProgress =
     objectiveType === "PERFORMANCE" && keyResult.targetValue !== null;
   const progressPct = showProgress

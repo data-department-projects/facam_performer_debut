@@ -95,6 +95,30 @@ const deptInclude = {
 
 type RawDept = Awaited<ReturnType<typeof prisma.department.findMany<{ include: typeof deptInclude }>>>[number];
 
+type RawTeam = RawDept["subDepartments"][number]["teams"][number];
+
+function accumulateTeamManagerData(
+  team: RawTeam,
+  managerOfUser: Map<string, string>,
+  teamOfUser: Map<string, string>,
+  directReportsOf: Map<string, string[]>,
+): void {
+  for (const member of team.members) {
+    if (team.manager && member.id !== team.manager.id) {
+      managerOfUser.set(member.id, team.manager.id);
+    }
+    teamOfUser.set(member.id, team.name);
+  }
+
+  if (!team.manager) return;
+
+  const existing = directReportsOf.get(team.manager.id) ?? [];
+  const newReports = team.members
+    .filter((m) => m.id !== team.manager!.id)
+    .map((m) => m.id);
+  directReportsOf.set(team.manager.id, [...new Set([...existing, ...newReports])]);
+}
+
 function buildManagerMaps(rawDepts: RawDept[]): {
   managerOfUser: Map<string, string>;
   teamOfUser: Map<string, string>;
@@ -107,19 +131,7 @@ function buildManagerMaps(rawDepts: RawDept[]): {
   for (const dept of rawDepts) {
     for (const sd of dept.subDepartments) {
       for (const team of sd.teams) {
-        for (const member of team.members) {
-          if (team.manager && member.id !== team.manager.id) {
-            managerOfUser.set(member.id, team.manager.id);
-          }
-          teamOfUser.set(member.id, team.name);
-        }
-        if (team.manager) {
-          const existing = directReportsOf.get(team.manager.id) ?? [];
-          const newReports = team.members
-            .filter((m) => m.id !== team.manager!.id)
-            .map((m) => m.id);
-          directReportsOf.set(team.manager.id, [...new Set([...existing, ...newReports])]);
-        }
+        accumulateTeamManagerData(team, managerOfUser, teamOfUser, directReportsOf);
       }
     }
   }

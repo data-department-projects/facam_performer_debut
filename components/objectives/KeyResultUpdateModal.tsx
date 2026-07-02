@@ -19,13 +19,18 @@ const STATUS_LABELS: Record<KeyResultStatus, string> = {
   DONE: "Terminé",
 };
 
+function nullIfEmpty(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
 export function KeyResultUpdateModal({
   open,
   keyResult,
   objectiveType,
   onClose,
   onSave,
-}: Props) {
+}: Readonly<Props>) {
   const [status, setStatus] = useState<KeyResultStatus>(keyResult.status);
   const [currentValue, setCurrentValue] = useState(
     keyResult.currentValue?.toString() ?? "",
@@ -66,8 +71,8 @@ export function KeyResultUpdateModal({
       id: keyResult.id,
       status,
       currentValue: computedCurrentValue,
-      evidenceNote: evidenceNote.trim() !== "" ? evidenceNote.trim() : null,
-      certificateUrl: certificateUrl.trim() !== "" ? certificateUrl.trim() : null,
+      evidenceNote: nullIfEmpty(evidenceNote),
+      certificateUrl: nullIfEmpty(certificateUrl),
     });
 
     setIsSubmitting(false);
@@ -81,8 +86,8 @@ export function KeyResultUpdateModal({
       ...keyResult,
       status,
       currentValue: computedCurrentValue,
-      evidenceNote: evidenceNote.trim() !== "" ? evidenceNote.trim() : null,
-      certificateUrl: certificateUrl.trim() !== "" ? certificateUrl.trim() : null,
+      evidenceNote: nullIfEmpty(evidenceNote),
+      certificateUrl: nullIfEmpty(certificateUrl),
     };
 
     onSave(updated);
