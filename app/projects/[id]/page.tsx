@@ -206,7 +206,10 @@ export default async function ProjectDetailPage({ params }: Props) {
         teamMembers: {
           include: { user: { select: { id: true, fullName: true } } },
         },
-        milestones: { orderBy: { targetDate: "asc" } },
+        milestones: {
+          orderBy: { targetDate: "asc" },
+          include: { responsible: { select: { fullName: true } } },
+        },
         expenses: { orderBy: { expenseDate: "desc" } },
         ganttTasks: { orderBy: { startDate: "asc" } },
       },
@@ -273,6 +276,8 @@ export default async function ProjectDetailPage({ params }: Props) {
       achievedDate: m.achievedDate
         ? m.achievedDate.toISOString().split("T")[0]
         : undefined,
+      responsibleUserName: m.responsible?.fullName,
+      status: m.status,
     }));
 
     const expenses = dbProject.expenses.map((e) => ({

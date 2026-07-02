@@ -501,8 +501,10 @@ Pas de gestion des risques ni des dépendances inter-projets sur cette fiche —
 | id | uuid | |
 | projectId | uuid | FK Project |
 | title | string | Ex. "Fin de phase de spécification", "MVP opérationnel" |
-| targetDate | date | |
-| achievedDate | date? | Renseigné à l'atteinte réelle du jalon |
+| targetDate | date | Date de réalisation visée |
+| achievedDate | date? | Renseigné automatiquement quand `status` passe à `DONE` |
+| responsibleUserId | uuid? | FK User — responsable de la livraison du jalon, optionnel |
+| status | enum | PENDING / IN_PROGRESS / DONE / DELAYED — défaut `PENDING` |
 | createdAt | timestamp | |
 
 ### `GanttTask`
@@ -641,11 +643,12 @@ Un résultat clé mesurable, rattaché à un objectif. Un objectif peut avoir pl
 | targetValue | decimal? | Valeur chiffrée visée — si applicable (objectifs de performance) |
 | currentValue | decimal? | Valeur atteinte, mise à jour par le Collaborateur au fil du temps |
 | evidenceNote | text? | Preuve textuelle (ex. noms des clients effectivement ajoutés) |
+| certificateUrl | text? | Lien externe vers le certificat (objectifs SKILLS_DEVELOPMENT) — jamais de fichier stocké |
 | dueDate | date? | Date limite du résultat clé |
 | status | enum | NOT_STARTED / IN_PROGRESS / DONE — mis à jour par le Collaborateur pour montrer que le travail est fait |
 | createdAt / updatedAt | timestamp | |
 
-La preuve de type certificat (objectifs SKILLS_DEVELOPMENT) est stockée via `Attachment` (`relatedType = KEY_RESULT`, `relatedId = KeyResult.id`) — jamais un champ de fichier dédié dupliqué sur `KeyResult`.
+La preuve de type certificat (objectifs SKILLS_DEVELOPMENT) est un simple lien externe (`certificateUrl`) saisi par le Collaborateur — aucun fichier n'est uploadé ni stocké sur S3 pour ce cas d'usage.
 
 ### `DepartmentObjective`
 
@@ -689,7 +692,6 @@ La preuve de type certificat (objectifs SKILLS_DEVELOPMENT) est stockée via `At
 | --- | --- | --- |
 | facam-performer | `attachments/{projectId}/{taskId}/{fileName}` | Justificatifs et livrables de tâche |
 | facam-performer | `gantt-imports/{projectId}/{fileName}` | Archive des fichiers Excel importés |
-| facam-performer | `key-results/{keyResultId}/{fileName}` | Certificats de formation (objectifs SKILLS_DEVELOPMENT) |
 
 Accès : bucket privé, jamais d'URL publique permanente — toujours une URL signée à expiration courte (5 min).
 
@@ -768,7 +770,7 @@ Règles que l'agent IA ne doit jamais violer :
 - `lib/notify.ts` (`notifyUser()`) est le seul point d'entrée pour notifier un utilisateur — push si `notificationConsent = ACCEPTED` et abonnement actif, sinon email — jamais les deux canaux pour le même événement.
 - `self.registration.showNotification()` n'est appelé que depuis `public/sw.js` — jamais depuis un script de page classique.
 - Seul le propriétaire (`Objective.userId`) peut créer, modifier ou mettre à jour le statut d'un `KeyResult` — Manager et Administrateur n'ont qu'un accès en lecture sur les objectifs des autres, selon la configuration des permissions du module Administration.
-- Un `KeyResult` de type `SKILLS_DEVELOPMENT` ne devrait passer à `status = DONE` qu'accompagné d'un `Attachment` (`relatedType = KEY_RESULT`) faisant foi de certificat — vérifié côté UI, jamais bloqué de façon rigide côté serveur (l'utilisateur reste responsable de la preuve qu'il fournit).
+- Un `KeyResult` de type `SKILLS_DEVELOPMENT` ne devrait passer à `status = DONE` qu'accompagné d'un `certificateUrl` renseigné (lien externe, jamais de fichier) — vérifié côté UI, jamais bloqué de façon rigide côté serveur (l'utilisateur reste responsable de la preuve qu'il fournit).
 - Un mot de passe en clair (généré ou saisi par l'Administrateur) n'existe jamais que dans la requête de l'action `sendUserCredentials()` — jamais stocké en base, jamais loggé, jamais conservé après l'envoi de l'email.
 - Un `PasswordResetOtp` est à usage unique (`usedAt`) et toujours invalidé par toute nouvelle demande de réinitialisation pour le même utilisateur — jamais deux codes valides simultanément.
 - Les emails "credentials" et "otp-reset" sont toujours envoyés via Resend (email), jamais via `lib/notify.ts` (push) — ce sont des messages de sécurité, jamais soumis à la préférence de notification de l'utilisateur.

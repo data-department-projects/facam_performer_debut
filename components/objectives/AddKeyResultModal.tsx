@@ -69,7 +69,7 @@ export function AddKeyResultModal({
       evidenceNote: null,
       dueDate: dueDate !== "" ? dueDate : null,
       status: "NOT_STARTED",
-      certificate: null,
+      certificateUrl: null,
     };
 
     onAdd(newKR);

@@ -56,6 +56,12 @@ type Props = {
   projectId: string;
 };
 
+function rollbackTask(tasks: KanbanTask[], taskId: string, original: KanbanTask): KanbanTask[] {
+  return tasks.map((t) =>
+    t.id === taskId ? { ...t, status: original.status, progressPercent: original.progressPercent } : t,
+  );
+}
+
 export function ProjectTaskKanban({ tasks: initialTasks }: Props) {
   const [tasks, setTasks] = useState<KanbanTask[]>(initialTasks);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -112,14 +118,7 @@ export function ProjectTaskKanban({ tasks: initialTasks }: Props) {
       });
 
       if (!result.success) {
-        // Retour arrière en cas d'erreur
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === taskId
-              ? { ...t, status: task.status, progressPercent: task.progressPercent }
-              : t,
-          ),
-        );
+        setTasks((prev) => rollbackTask(prev, taskId, task));
         setError(result.error ?? "Erreur lors de la mise à jour.");
       }
       setPendingId(null);

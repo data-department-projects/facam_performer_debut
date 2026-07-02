@@ -707,6 +707,175 @@ async function getRecentActivity(
 
 // ─── Nouvelles requêtes BI ──────────────────────────────────────────────────
 
+type RiskyProject = {
+  id: string;
+  code: string;
+  initialBudget: { toString(): string };
+  expenses: { amount: { toString(): string } }[];
+  ganttTasks: { progressPercent: number }[];
+};
+
+function buildBudgetAlerts(projects: RiskyProject[]): AlertItem[] {
+  const alerts: AlertItem[] = [];
+  for (const p of projects) {
+    const totalExpenses = p.expenses.reduce((s, e) => s + Number(e.amount), 0);
+    const budget = Number(p.initialBudget);
+    const budgetRate = budget > 0 ? (totalExpenses / budget) * 100 : 0;
+    const avgProgress =
+      p.ganttTasks.length > 0
+        ? p.ganttTasks.reduce((s, t) => s + t.progressPercent, 0) / p.ganttTasks.length
+        : 0;
+    if (budgetRate > 100) {
+      alerts.push({
+        id: `budget-overrun-${p.id}`,
+        severity: "critical",
+        message: `${p.code} — Budget dépassé (${Math.round(budgetRate)}% consommé)`,
+        href: `/projects/${p.id}`,
+      });
+    } else if (budgetRate > 80 && avgProgress < 60) {
+      alerts.push({
+        id: `budget-risk-${p.id}`,
+        severity: "high",
+        message: `${p.code} — Budget à ${Math.round(budgetRate)}% mais seulement ${Math.round(avgProgress)}% d'avancement`,
+        href: `/projects/${p.id}`,
+      });
+    }
+  }
+  return alerts;
+}
+
+async function fetchBudgetAlerts(projectScope: Prisma.ProjectWhereInput): Promise<AlertItem[]> {
+  const projects = await prisma.project.findMany({
+    where: { ...projectScope, initialBudget: { gt: 0 } },
+    select: {
+      id: true,
+      code: true,
+      initialBudget: true,
+      expenses: { select: { amount: true } },
+      ganttTasks: { select: { progressPercent: true } },
+    },
+  });
+  return buildBudgetAlerts(projects);
+}
+
+async function fetchOverdueProjectAlerts(
+  projectScope: Prisma.ProjectWhereInput,
+  today: Date,
+): Promise<AlertItem[]> {
+  const projects = await prisma.project.findMany({
+    where: { ...projectScope, targetEndDate: { lt: today }, currentStatus: { notIn: ["DELIVERED", "CANCELLED"] } },
+    select: { id: true, code: true, targetEndDate: true },
+    take: 3,
+  });
+  return projects.map((p) => {
+    const daysLate = Math.floor((today.getTime() - p.targetEndDate.getTime()) / (1000 * 60 * 60 * 24));
+    return {
+      id: `overdue-project-${p.id}`,
+      severity: daysLate > 14 ? ("critical" as const) : ("high" as const),
+      message: `${p.code} — En retard de ${daysLate} jour${daysLate > 1 ? "s" : ""}`,
+      href: `/projects/${p.id}`,
+    };
+  });
+}
+
+async function fetchOverdueMilestoneAlerts(
+  projectScope: Prisma.ProjectWhereInput,
+  today: Date,
+): Promise<AlertItem[]> {
+  const milestones = await prisma.projectMilestone.findMany({
+    where: { targetDate: { lt: today }, achievedDate: null, project: projectScope },
+    select: { id: true, title: true, project: { select: { code: true, id: true } } },
+    take: 3,
+  });
+  return milestones.map((ms) => ({
+    id: `overdue-milestone-${ms.id}`,
+    severity: "high" as const,
+    message: `Jalon manqué : « ${ms.title} » (${ms.project.code})`,
+    href: `/projects/${ms.project.id}`,
+  }));
+}
+
+async function fetchOverdueActionAlerts(
+  ctx: DashboardContext,
+  filters: Partial<ActiveFilters> | undefined,
+  today: Date,
+): Promise<AlertItem[]> {
+  const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const count = await prisma.committeeAction.count({
+    where: { status: "PENDING", dueDate: { lt: sevenDaysAgo }, ...getCommitteeActionScope(ctx, filters) },
+  });
+  if (count === 0) return [];
+  return [{
+    id: "overdue-committee-actions",
+    severity: "high",
+    message: `${count} action${count > 1 ? "s" : ""} de comité en retard de plus de 7 jours`,
+    href: "/committees",
+  }];
+}
+
+async function fetchAdminAlerts(today: Date): Promise<AlertItem[]> {
+  const alerts: AlertItem[] = [];
+  const fiveDaysAgo = new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000);
+  const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000);
+
+  const [staleUnconfirmed, stalePlanners] = await Promise.all([
+    prisma.project.count({ where: { isConfirmed: false, createdAt: { lt: fiveDaysAgo } } }),
+    prisma.weekPlanner.count({ where: { status: "SUBMITTED", user: { role: "MANAGER" }, createdAt: { lt: twoDaysAgo } } }),
+  ]);
+
+  if (staleUnconfirmed > 0) {
+    alerts.push({
+      id: "stale-unconfirmed",
+      severity: "medium",
+      message: `${staleUnconfirmed} projet${staleUnconfirmed > 1 ? "s" : ""} en attente de confirmation depuis plus de 5 jours`,
+      href: "/actions-to-process",
+    });
+  }
+  if (stalePlanners > 0) {
+    alerts.push({
+      id: "stale-submitted-planners",
+      severity: "medium",
+      message: `${stalePlanners} planning${stalePlanners > 1 ? "s" : ""} soumis non validé${stalePlanners > 1 ? "s" : ""} depuis plus de 2 jours`,
+      href: "/actions-to-process",
+    });
+  }
+  return alerts;
+}
+
+async function fetchManagerPlannerAlerts(ctx: DashboardContext): Promise<AlertItem[]> {
+  const count = await prisma.weekPlanner.count({
+    where: { status: "DRAFT", weekStartDate: getCurrentWeekMonday(), user: { team: { managerId: ctx.userId } } },
+  });
+  if (count === 0) return [];
+  return [{
+    id: "draft-team-planners",
+    severity: "medium",
+    message: `${count} collaborateur${count > 1 ? "s" : ""} n'ont pas encore soumis leur planning cette semaine`,
+    href: "/actions-to-process",
+  }];
+}
+
+async function fetchExpiredKeyResultAlerts(ctx: DashboardContext, today: Date): Promise<AlertItem[]> {
+  const krScope: Prisma.KeyResultWhereInput =
+    ctx.role === "ADMIN" ? {} :
+    ctx.role === "MANAGER" && ctx.departmentId
+      ? { objective: { user: { departmentId: ctx.departmentId } } }
+      : ctx.role === "MANAGER"
+        ? {}
+        : { objective: { userId: ctx.userId } };
+
+  const count = await prisma.keyResult.count({
+    where: { ...krScope, status: { not: "DONE" }, dueDate: { lt: today } },
+  });
+  if (count === 0) return [];
+  return [{
+    id: "expired-key-results",
+    severity: ctx.role === "COLLABORATOR" ? "high" : "medium",
+    message: `${count} résultat${count > 1 ? "s" : ""} clé${count > 1 ? "s" : ""} dépassé${count > 1 ? "s" : ""} non terminé${count > 1 ? "s" : ""}`,
+    href: "/objectives",
+  }];
+}
+
 async function getSmartAlerts(
   ctx: DashboardContext,
   filters?: Partial<ActiveFilters>,
@@ -716,188 +885,20 @@ async function getSmartAlerts(
 
   if (ctx.role === "ADMIN" || ctx.role === "MANAGER") {
     const projectScope = getConfirmedActiveProjectWhere(ctx, filters);
+    const [budgetAlerts, overdueProjectAlerts, milestoneAlerts, actionAlerts] = await Promise.all([
+      fetchBudgetAlerts(projectScope),
+      fetchOverdueProjectAlerts(projectScope, today),
+      fetchOverdueMilestoneAlerts(projectScope, today),
+      fetchOverdueActionAlerts(ctx, filters, today),
+    ]);
+    alerts.push(...budgetAlerts, ...overdueProjectAlerts, ...milestoneAlerts, ...actionAlerts);
 
-    // Projets avec budget > 80% consommé mais avancement < 60%
-    const riskyProjects = await prisma.project.findMany({
-      where: {
-        ...projectScope,
-        initialBudget: { gt: 0 },
-      },
-      select: {
-        id: true,
-        name: true,
-        code: true,
-        initialBudget: true,
-        expenses: { select: { amount: true } },
-        ganttTasks: { select: { progressPercent: true } },
-      },
-    });
-
-    for (const p of riskyProjects) {
-      const totalExpenses = p.expenses.reduce((s, e) => s + Number(e.amount), 0);
-      const budgetRate = Number(p.initialBudget) > 0
-        ? (totalExpenses / Number(p.initialBudget)) * 100
-        : 0;
-      const avgProgress = p.ganttTasks.length > 0
-        ? p.ganttTasks.reduce((s, t) => s + t.progressPercent, 0) / p.ganttTasks.length
-        : 0;
-
-      if (budgetRate > 100) {
-        alerts.push({
-          id: `budget-overrun-${p.id}`,
-          severity: "critical",
-          message: `${p.code} — Budget dépassé (${Math.round(budgetRate)}% consommé)`,
-          href: `/projects/${p.id}`,
-        });
-      } else if (budgetRate > 80 && avgProgress < 60) {
-        alerts.push({
-          id: `budget-risk-${p.id}`,
-          severity: "high",
-          message: `${p.code} — Budget à ${Math.round(budgetRate)}% mais seulement ${Math.round(avgProgress)}% d'avancement`,
-          href: `/projects/${p.id}`,
-        });
-      }
-    }
-
-    // Projets en retard (targetEndDate dépassée, non livrés)
-    const overdueProjects = await prisma.project.findMany({
-      where: {
-        ...projectScope,
-        targetEndDate: { lt: today },
-        currentStatus: { notIn: ["DELIVERED", "CANCELLED"] },
-      },
-      select: { id: true, code: true, name: true, targetEndDate: true },
-      take: 3,
-    });
-
-    for (const p of overdueProjects) {
-      const daysLate = Math.floor(
-        (today.getTime() - p.targetEndDate.getTime()) / (1000 * 60 * 60 * 24),
-      );
-      alerts.push({
-        id: `overdue-project-${p.id}`,
-        severity: daysLate > 14 ? "critical" : "high",
-        message: `${p.code} — En retard de ${daysLate} jour${daysLate > 1 ? "s" : ""}`,
-        href: `/projects/${p.id}`,
-      });
-    }
-
-    // Jalons manqués
-    const overdueMilestones = await prisma.projectMilestone.findMany({
-      where: {
-        targetDate: { lt: today },
-        achievedDate: null,
-        project: projectScope,
-      },
-      select: { id: true, title: true, project: { select: { code: true, id: true } } },
-      take: 3,
-    });
-
-    for (const ms of overdueMilestones) {
-      alerts.push({
-        id: `overdue-milestone-${ms.id}`,
-        severity: "high",
-        message: `Jalon manqué : « ${ms.title} » (${ms.project.code})`,
-        href: `/projects/${ms.project.id}`,
-      });
-    }
-
-    // Actions de comité en retard > 7 jours
-    const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const overdueActions = await prisma.committeeAction.count({
-      where: {
-        status: "PENDING",
-        dueDate: { lt: sevenDaysAgo },
-        ...getCommitteeActionScope(ctx, filters),
-      },
-    });
-
-    if (overdueActions > 0) {
-      alerts.push({
-        id: "overdue-committee-actions",
-        severity: "high",
-        message: `${overdueActions} action${overdueActions > 1 ? "s" : ""} de comité en retard de plus de 7 jours`,
-        href: "/committees",
-      });
-    }
-
-    if (ctx.role === "ADMIN") {
-      // Projets en attente de confirmation depuis > 5 jours
-      const fiveDaysAgo = new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000);
-      const staleUnconfirmed = await prisma.project.count({
-        where: { isConfirmed: false, createdAt: { lt: fiveDaysAgo } },
-      });
-
-      if (staleUnconfirmed > 0) {
-        alerts.push({
-          id: "stale-unconfirmed",
-          severity: "medium",
-          message: `${staleUnconfirmed} projet${staleUnconfirmed > 1 ? "s" : ""} en attente de confirmation depuis plus de 5 jours`,
-          href: "/actions-to-process",
-        });
-      }
-
-      // Week Planners soumis non validés depuis > 2 jours
-      const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000);
-      const stalePlanners = await prisma.weekPlanner.count({
-        where: { status: "SUBMITTED", user: { role: "MANAGER" }, createdAt: { lt: twoDaysAgo } },
-      });
-
-      if (stalePlanners > 0) {
-        alerts.push({
-          id: "stale-submitted-planners",
-          severity: "medium",
-          message: `${stalePlanners} planning${stalePlanners > 1 ? "s" : ""} soumis non validé${stalePlanners > 1 ? "s" : ""} depuis plus de 2 jours`,
-          href: "/actions-to-process",
-        });
-      }
-    }
-
-    if (ctx.role === "MANAGER") {
-      // Plannings de l'équipe non soumis (DRAFT en fin de semaine)
-      const draftPlanners = await prisma.weekPlanner.count({
-        where: {
-          status: "DRAFT",
-          weekStartDate: getCurrentWeekMonday(),
-          user: { team: { managerId: ctx.userId } },
-        },
-      });
-
-      if (draftPlanners > 0) {
-        alerts.push({
-          id: "draft-team-planners",
-          severity: "medium",
-          message: `${draftPlanners} collaborateur${draftPlanners > 1 ? "s" : ""} n'ont pas encore soumis leur planning cette semaine`,
-          href: "/actions-to-process",
-        });
-      }
-    }
+    if (ctx.role === "ADMIN") alerts.push(...await fetchAdminAlerts(today));
+    if (ctx.role === "MANAGER") alerts.push(...await fetchManagerPlannerAlerts(ctx));
   }
 
-  // Résultats clés expirés (tous rôles)
-  const krScope: Prisma.KeyResultWhereInput =
-    ctx.role === "ADMIN"
-      ? {}
-      : ctx.role === "MANAGER"
-        ? ctx.departmentId
-          ? { objective: { user: { departmentId: ctx.departmentId } } }
-          : {}
-        : { objective: { userId: ctx.userId } };
+  alerts.push(...await fetchExpiredKeyResultAlerts(ctx, today));
 
-  const expiredKr = await prisma.keyResult.count({
-    where: { ...krScope, status: { not: "DONE" }, dueDate: { lt: today } },
-  });
-
-  if (expiredKr > 0) {
-    alerts.push({
-      id: "expired-key-results",
-      severity: ctx.role === "COLLABORATOR" ? "high" : "medium",
-      message: `${expiredKr} résultat${expiredKr > 1 ? "s" : ""} clé${expiredKr > 1 ? "s" : ""} dépassé${expiredKr > 1 ? "s" : ""} non terminé${expiredKr > 1 ? "s" : ""}`,
-      href: "/objectives",
-    });
-  }
-
-  // Trier par sévérité
   const order: Record<string, number> = { critical: 0, high: 1, medium: 2, info: 3 };
   return alerts.sort((a, b) => (order[a.severity] ?? 3) - (order[b.severity] ?? 3)).slice(0, 8);
 }

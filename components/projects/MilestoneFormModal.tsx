@@ -3,23 +3,26 @@
 import { useState, useTransition } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { X } from "lucide-react";
 import { createMilestone } from "@/actions/projects";
+import { milestoneSchema, MILESTONE_STATUSES, type MilestoneInput } from "@/lib/schemas/project";
 
-const milestoneSchema = z.object({
-  title: z.string().min(1, "Le titre est requis"),
-  targetDate: z.string().min(1, "La date cible est requise"),
-});
+const STATUS_LABELS: Record<(typeof MILESTONE_STATUSES)[number], string> = {
+  PENDING: "Prévu",
+  IN_PROGRESS: "En cours",
+  DONE: "Atteint",
+  DELAYED: "En retard",
+};
 
-type MilestoneInput = z.infer<typeof milestoneSchema>;
+type TeamMemberOption = { id: string; fullName: string };
 
 type Props = {
   projectId: string;
+  teamMembers: TeamMemberOption[];
   onClose: () => void;
 };
 
-export function MilestoneFormModal({ projectId, onClose }: Props) {
+export function MilestoneFormModal({ projectId, teamMembers, onClose }: Props) {
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -27,7 +30,10 @@ export function MilestoneFormModal({ projectId, onClose }: Props) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<MilestoneInput>({ resolver: zodResolver(milestoneSchema) as unknown as Resolver<MilestoneInput> });
+  } = useForm<MilestoneInput>({
+    resolver: zodResolver(milestoneSchema) as unknown as Resolver<MilestoneInput>,
+    defaultValues: { status: "PENDING" },
+  });
 
   const onSubmit = (data: MilestoneInput) => {
     setServerError(null);
@@ -67,7 +73,7 @@ export function MilestoneFormModal({ projectId, onClose }: Props) {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-gray500">
-              Titre <span className="text-error">*</span>
+              Nom du jalon <span className="text-error">*</span>
             </label>
             <input
               className={`rounded-md border px-3 py-2 text-sm text-facamBlack placeholder:text-gray400 focus:outline-none focus:ring-2 focus:ring-facamBlue/20 focus:border-facamBlue ${
@@ -82,8 +88,23 @@ export function MilestoneFormModal({ projectId, onClose }: Props) {
           </div>
 
           <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-gray500">Responsable</label>
+            <select
+              className="rounded-md border border-gray300 px-3 py-2 text-sm text-facamBlack focus:outline-none focus:ring-2 focus:ring-facamBlue/20 focus:border-facamBlue"
+              {...register("responsibleUserId")}
+            >
+              <option value="">— Sélectionner un responsable —</option>
+              {teamMembers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.fullName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-gray500">
-              Date cible <span className="text-error">*</span>
+              Date de réalisation <span className="text-error">*</span>
             </label>
             <input
               type="date"
@@ -95,6 +116,20 @@ export function MilestoneFormModal({ projectId, onClose }: Props) {
             {errors.targetDate && (
               <span className="text-xs text-error">{errors.targetDate.message}</span>
             )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-gray500">Statut</label>
+            <select
+              className="rounded-md border border-gray300 px-3 py-2 text-sm text-facamBlack focus:outline-none focus:ring-2 focus:ring-facamBlue/20 focus:border-facamBlue"
+              {...register("status")}
+            >
+              {MILESTONE_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

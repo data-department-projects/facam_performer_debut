@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X, Plus, AlertTriangle, Target, Trash2 } from "lucide-react";
-import type { ObjectiveWithKeyResults, KeyResultWithCert, Certificate } from "./types";
+import type { ObjectiveWithKeyResults, KeyResultWithCert } from "./types";
 import { ObjectiveTypeBadge } from "./ObjectiveStatusBadge";
 import { KeyResultCard } from "./KeyResultCard";
 import { KeyResultUpdateModal } from "./KeyResultUpdateModal";
@@ -188,12 +188,6 @@ export function ObjectiveDrawer({
                     keyResult={kr}
                     objectiveType={objective.type}
                     onUpdate={readonly ? undefined : () => setSelectedKR(kr)}
-                    onCertificateUploaded={
-                      readonly
-                        ? undefined
-                        : (cert: Certificate) =>
-                            onUpdateKR(kr.id, { ...kr, certificate: cert })
-                    }
                     readonly={readonly}
                   />
                 ))}

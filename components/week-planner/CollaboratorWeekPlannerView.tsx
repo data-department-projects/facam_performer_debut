@@ -91,11 +91,10 @@ export function CollaboratorWeekPlannerView({
         projectId,
       });
       if (result.success) {
+        const confirmed = { ...result.data, project: result.data.project ?? null };
         setPlanner((prev) => ({
           ...prev,
-          tasks: prev.tasks.map((t) =>
-            t.id === optimisticTask.id ? { ...result.data, project: result.data.project ?? null } : t,
-          ),
+          tasks: prev.tasks.map((t) => (t.id === optimisticTask.id ? confirmed : t)),
         }));
       } else {
         setPlanner((prev) => ({

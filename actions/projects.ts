@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole, getCurrentUser } from "@/lib/permissions";
 import type { Role } from "@/app/generated/prisma/client";
-import { projectSchema, projectExpenseSchema, type ProjectInput } from "@/lib/schemas/project";
+import { projectSchema, projectExpenseSchema, milestoneSchema, type ProjectInput } from "@/lib/schemas/project";
 
 export async function createProject(
   rawData: unknown,
@@ -95,16 +95,42 @@ export async function createProject(
 
 export async function createMilestone(
   projectId: string,
-  data: { title: string; targetDate: string },
+  rawData: unknown,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireRole(["ADMIN", "MANAGER"]);
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !["ADMIN", "MANAGER"].includes(currentUser.role as Role)) {
+      return { success: false, error: "Accès non autorisé." };
+    }
+
+    if (currentUser.role === "MANAGER") {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: {
+          projectManagerId: true,
+          teamMembers: { select: { userId: true } },
+        },
+      });
+      const isOwner =
+        project?.projectManagerId === currentUser.id ||
+        project?.teamMembers.some((m) => m.userId === currentUser.id);
+      if (!isOwner) return { success: false, error: "Accès non autorisé." };
+    }
+
+    const parsed = milestoneSchema.safeParse(rawData);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
+    }
+    const { title, targetDate, responsibleUserId, status } = parsed.data;
 
     await prisma.projectMilestone.create({
       data: {
         projectId,
-        title: data.title.trim(),
-        targetDate: new Date(data.targetDate),
+        title: title.trim(),
+        targetDate: new Date(targetDate),
+        responsibleUserId: responsibleUserId || null,
+        status,
+        achievedDate: status === "DONE" ? new Date() : null,
       },
     });
 
@@ -121,7 +147,30 @@ export async function deleteMilestone(
   projectId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireRole(["ADMIN", "MANAGER"]);
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !["ADMIN", "MANAGER"].includes(currentUser.role as Role)) {
+      return { success: false, error: "Accès non autorisé." };
+    }
+
+    const milestone = await prisma.projectMilestone.findUnique({
+      where: { id: milestoneId },
+      select: {
+        projectId: true,
+        project: {
+          select: { projectManagerId: true, teamMembers: { select: { userId: true } } },
+        },
+      },
+    });
+    if (!milestone || milestone.projectId !== projectId) {
+      return { success: false, error: "Jalon introuvable ou accès refusé." };
+    }
+
+    if (currentUser.role === "MANAGER") {
+      const isOwner =
+        milestone.project.projectManagerId === currentUser.id ||
+        milestone.project.teamMembers.some((m) => m.userId === currentUser.id);
+      if (!isOwner) return { success: false, error: "Accès non autorisé." };
+    }
 
     await prisma.projectMilestone.delete({ where: { id: milestoneId } });
 

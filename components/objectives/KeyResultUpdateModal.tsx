@@ -33,6 +33,9 @@ export function KeyResultUpdateModal({
   const [evidenceNote, setEvidenceNote] = useState(
     keyResult.evidenceNote ?? "",
   );
+  const [certificateUrl, setCertificateUrl] = useState(
+    keyResult.certificateUrl ?? "",
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +45,7 @@ export function KeyResultUpdateModal({
     setStatus(keyResult.status);
     setCurrentValue(keyResult.currentValue?.toString() ?? "");
     setEvidenceNote(keyResult.evidenceNote ?? "");
+    setCertificateUrl(keyResult.certificateUrl ?? "");
     setError(null);
     onClose();
   }
@@ -63,6 +67,7 @@ export function KeyResultUpdateModal({
       status,
       currentValue: computedCurrentValue,
       evidenceNote: evidenceNote.trim() !== "" ? evidenceNote.trim() : null,
+      certificateUrl: certificateUrl.trim() !== "" ? certificateUrl.trim() : null,
     });
 
     setIsSubmitting(false);
@@ -77,6 +82,7 @@ export function KeyResultUpdateModal({
       status,
       currentValue: computedCurrentValue,
       evidenceNote: evidenceNote.trim() !== "" ? evidenceNote.trim() : null,
+      certificateUrl: certificateUrl.trim() !== "" ? certificateUrl.trim() : null,
     };
 
     onSave(updated);
@@ -175,6 +181,27 @@ export function KeyResultUpdateModal({
               className="resize-none rounded-md border border-gray300 bg-facamWhite px-3 py-2 text-sm text-facamBlack placeholder:text-gray400 focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
             />
           </div>
+
+          {/* Lien du certificat — SKILLS_DEVELOPMENT uniquement */}
+          {objectiveType === "SKILLS_DEVELOPMENT" && (
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="kru-certificate"
+                className="text-sm font-medium text-facamBlack"
+              >
+                Lien du certificat{" "}
+                <span className="text-xs font-normal text-gray400">(optionnel)</span>
+              </label>
+              <input
+                id="kru-certificate"
+                type="url"
+                value={certificateUrl}
+                onChange={(e) => setCertificateUrl(e.target.value)}
+                placeholder="https://..."
+                className="rounded-md border border-gray300 bg-facamWhite px-3 py-2 text-sm text-facamBlack placeholder:text-gray400 focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <button

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/permissions";
-import { uploadAttachment, buildKeyResultKey, getAttachmentUrl, deleteAttachments } from "@/lib/s3-client";
+import { deleteAttachments } from "@/lib/s3-client";
 import {
   createObjectiveSchema,
   updateObjectiveSchema,
@@ -202,6 +202,7 @@ export async function updateKeyResultProgress(
         status: input.status as KeyResultStatus,
         currentValue: input.currentValue ?? null,
         evidenceNote: input.evidenceNote ?? null,
+        certificateUrl: input.certificateUrl?.trim() ? input.certificateUrl.trim() : null,
       },
     });
 
@@ -246,80 +247,5 @@ export async function deleteKeyResult(
   } catch (error) {
     console.error("[objectives/deleteKeyResult]", error);
     return { success: false, error: "Erreur lors de la suppression du résultat clé" };
-  }
-}
-
-// ── uploadCertificate ──────────────────────────────────────────────────────────
-
-export async function uploadCertificate(
-  formData: FormData,
-): Promise<{ success: boolean; attachment?: { id: string; fileName: string; signedUrl: string }; error?: string }> {
-  try {
-    const user = await requireRole(["COLLABORATOR", "MANAGER"]);
-
-    const file = formData.get("file") as File | null;
-    const keyResultId = formData.get("keyResultId") as string | null;
-
-    if (!file || !keyResultId) {
-      return { success: false, error: "Fichier ou identifiant manquant" };
-    }
-
-    const kr = await prisma.keyResult.findUnique({
-      where: { id: keyResultId },
-      select: {
-        objective: { select: { userId: true } },
-        attachments: { select: { id: true, s3Key: true } },
-      },
-    });
-    if (!kr || kr.objective.userId !== user.id) {
-      return { success: false, error: "Résultat clé introuvable ou accès refusé" };
-    }
-
-    // Supprimer l'ancien certificat s'il existe — DB d'abord, S3 ensuite (non bloquant)
-    if (kr.attachments.length > 0) {
-      const oldKeys = kr.attachments.map((a) => a.s3Key);
-      await prisma.attachment.deleteMany({ where: { keyResultId } });
-      try {
-        await deleteAttachments(oldKeys);
-      } catch {
-        console.error("[objectives/uploadCertificate] Suppression ancien S3 échouée — non bloquant");
-      }
-    }
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const s3Key = buildKeyResultKey(keyResultId, file.name);
-
-    await uploadAttachment(s3Key, buffer, file.type);
-    let dbCreated = false;
-
-    try {
-      const signedUrl = await getAttachmentUrl(s3Key);
-
-      const attachment = await prisma.attachment.create({
-        data: {
-          s3Key,
-          fileName: file.name,
-          contentType: file.type,
-          relatedType: "KEY_RESULT",
-          relatedId: keyResultId,
-          uploadedById: user.id,
-          keyResultId,
-        },
-        select: { id: true, fileName: true },
-      });
-      dbCreated = true;
-
-      revalidatePath("/objectives");
-      return { success: true, attachment: { ...attachment, signedUrl } };
-    } catch (innerError) {
-      if (!dbCreated) {
-        // S3 uploadé mais DB échouée — nettoyer le fichier orphelin
-        try { await deleteAttachments([s3Key]); } catch { /* non-bloquant */ }
-      }
-      throw innerError;
-    }
-  } catch (error) {
-    console.error("[objectives/uploadCertificate]", error);
-    return { success: false, error: "Erreur lors de l'upload du certificat" };
   }
 }

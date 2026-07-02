@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { httpUrlSchema } from "./url";
 
 export const createCommitteeSchema = z.object({
   name: z.string().min(1, "Le nom du comité est requis"),
@@ -21,7 +22,7 @@ export const planMeetingSchema = z.object({
   meetingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format de date invalide (YYYY-MM-DD)"),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, "Format HH:MM requis"),
   endTime: z.string().regex(/^\d{2}:\d{2}$/, "Format HH:MM requis"),
-  meetingLink: z.string().url("URL invalide").optional().or(z.literal("")),
+  meetingLink: httpUrlSchema.optional().or(z.literal("")),
 });
 
 export type PlanMeetingInput = z.infer<typeof planMeetingSchema>;

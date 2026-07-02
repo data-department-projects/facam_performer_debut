@@ -401,18 +401,40 @@ function DeptNode({
   const childCount = dept.children.length;
   const subDeptCount = dept.subDepartments.length;
 
+  const ns = isRoot
+    ? {
+        border: "border-gray200",
+        pad: "p-4",
+        sz: 18 as const,
+        actionSz: 14 as const,
+        iconBox: "h-10 w-10",
+        iconColor: "text-facamBlue",
+        textClass: "text-sm font-semibold",
+        accentBar: "h-1 bg-facamBlue",
+        indentBorder: "border-facamBlue/15",
+      }
+    : {
+        border: "border-facamBlue/20",
+        pad: "p-3",
+        sz: 15 as const,
+        actionSz: 13 as const,
+        iconBox: "h-8 w-8",
+        iconColor: "text-facamBlueMid",
+        textClass: "text-sm font-medium",
+        accentBar: "h-0.5 bg-facamBlueMid",
+        indentBorder: "border-facamBlueMid/15",
+      };
+
   return (
     <div>
       {/* ── Carte département ── */}
       <div
-        className={`overflow-hidden rounded-xl border bg-facamWhite shadow-sm transition-shadow hover:shadow-md ${
-          isRoot ? "border-gray200" : "border-facamBlue/20"
-        }`}
+        className={`overflow-hidden rounded-xl border bg-facamWhite shadow-sm transition-shadow hover:shadow-md ${ns.border}`}
       >
         {/* Barre accent colorée en haut */}
-        <div className={`w-full ${isRoot ? "h-1 bg-facamBlue" : "h-0.5 bg-facamBlueMid"}`} />
+        <div className={`w-full ${ns.accentBar}`} />
 
-        <div className={`flex items-center gap-3 ${isRoot ? "p-4" : "p-3"}`}>
+        <div className={`flex items-center gap-3 ${ns.pad}`}>
           {/* Chevron d'expansion */}
           <button
             onClick={() => toggleDept(dept.id)}
@@ -420,32 +442,23 @@ function DeptNode({
             className="text-gray300 transition-colors hover:text-facamBlue disabled:cursor-default disabled:opacity-40"
           >
             {expanded ? (
-              <ChevronDown size={isRoot ? 18 : 15} />
+              <ChevronDown size={ns.sz} />
             ) : (
-              <ChevronRight size={isRoot ? 18 : 15} />
+              <ChevronRight size={ns.sz} />
             )}
           </button>
 
           {/* Icône */}
           <div
-            className={`flex flex-shrink-0 items-center justify-center rounded-xl bg-facamBlueTint ${
-              isRoot ? "h-10 w-10" : "h-8 w-8"
-            }`}
+            className={`flex flex-shrink-0 items-center justify-center rounded-xl bg-facamBlueTint ${ns.iconBox}`}
           >
-            <Building2
-              size={isRoot ? 18 : 15}
-              className={isRoot ? "text-facamBlue" : "text-facamBlueMid"}
-            />
+            <Building2 size={ns.sz} className={ns.iconColor} />
           </div>
 
           {/* Nom + stats */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p
-                className={`truncate ${
-                  isRoot ? "text-sm font-semibold" : "text-sm font-medium"
-                } text-facamDark`}
-              >
+              <p className={`truncate ${ns.textClass} text-facamDark`}>
                 {dept.name}
               </p>
               {!isRoot && (
@@ -483,16 +496,16 @@ function DeptNode({
                 title="Ajouter un département enfant"
                 onClick={() => onAddChildDept(dept.id)}
               >
-                <Network size={isRoot ? 14 : 13} />
+                <Network size={ns.actionSz} />
               </ActionBtn>
               <ActionBtn
                 title="Ajouter un sous-département"
                 onClick={() => onAddSubDept(dept.id)}
               >
-                <Plus size={isRoot ? 14 : 13} />
+                <Plus size={ns.actionSz} />
               </ActionBtn>
               <ActionBtn title="Modifier" onClick={() => onEditDept(dept)}>
-                <Pencil size={isRoot ? 14 : 13} />
+                <Pencil size={ns.actionSz} />
               </ActionBtn>
               <DeleteButton onConfirm={() => onDeleteDept(dept.id)} isPending={isPending} />
             </div>
@@ -503,9 +516,7 @@ function DeptNode({
       {/* ── Contenu déplié ── */}
       {expanded && (
         <div
-          className={`ml-6 mt-2 space-y-2 border-l-2 pl-4 ${
-            isRoot ? "border-facamBlue/15" : "border-facamBlueMid/15"
-          }`}
+          className={`ml-6 mt-2 space-y-2 border-l-2 pl-4 ${ns.indentBorder}`}
         >
           {/* Départements enfants (récursif) */}
           {dept.children.map((child) => (

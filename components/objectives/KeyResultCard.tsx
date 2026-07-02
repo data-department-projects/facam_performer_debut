@@ -1,16 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { CalendarDays, Upload, ExternalLink, Loader2 } from "lucide-react";
-import type { KeyResultWithCert, ObjectiveType, Certificate } from "./types";
+import { CalendarDays, ExternalLink } from "lucide-react";
+import type { KeyResultWithCert, ObjectiveType } from "./types";
 import { KRStatusBadge } from "./ObjectiveStatusBadge";
-import { uploadCertificate } from "@/actions/objectives";
 
 type Props = {
   keyResult: KeyResultWithCert;
   objectiveType: ObjectiveType;
   onUpdate?: () => void;
-  onCertificateUploaded?: (cert: Certificate) => void;
   readonly?: boolean;
 };
 
@@ -26,13 +23,8 @@ export function KeyResultCard({
   keyResult,
   objectiveType,
   onUpdate,
-  onCertificateUploaded,
   readonly = false,
 }: Props) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
   const showProgress =
     objectiveType === "PERFORMANCE" && keyResult.targetValue !== null;
   const progressPct = showProgress
@@ -43,38 +35,10 @@ export function KeyResultCard({
         ),
       )
     : 0;
-  const showCertZone =
+  const showCertHint =
     !readonly &&
     objectiveType === "SKILLS_DEVELOPMENT" &&
-    keyResult.status !== "DONE";
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    setUploadError(null);
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("keyResultId", keyResult.id);
-
-    const result = await uploadCertificate(formData);
-    setIsUploading(false);
-
-    if (!result.success || !result.attachment) {
-      setUploadError(result.error ?? "Erreur lors de l'upload");
-      return;
-    }
-
-    onCertificateUploaded?.({
-      id: result.attachment.id,
-      fileName: result.attachment.fileName,
-      signedUrl: result.attachment.signedUrl,
-    });
-
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }
+    !keyResult.certificateUrl;
 
   return (
     <div className="rounded-xl border border-gray200 bg-gray50 p-4">
@@ -130,49 +94,23 @@ export function KeyResultCard({
       )}
 
       {/* Certificat existant */}
-      {keyResult.certificate && (
+      {keyResult.certificateUrl && (
         <a
-          href={keyResult.certificate.signedUrl}
+          href={keyResult.certificateUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-3 flex items-center gap-1.5 text-xs font-medium text-facamBlue hover:text-facamDark"
         >
           <ExternalLink size={11} />
-          {keyResult.certificate.fileName}
+          Voir le certificat
         </a>
       )}
 
-      {/* Zone upload certificat — SKILLS_DEVELOPMENT actif */}
-      {showCertZone && (
-        <div className="mt-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            className="sr-only"
-            onChange={handleFileChange}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray300 bg-facamWhite px-4 py-3 text-xs text-gray500 transition-colors hover:border-facamBlue hover:text-facamBlue disabled:cursor-wait disabled:opacity-60"
-          >
-            {isUploading ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : (
-              <Upload size={13} />
-            )}
-            {isUploading
-              ? "Upload en cours…"
-              : keyResult.certificate
-                ? "Remplacer le certificat"
-                : "Uploader un certificat"}
-          </button>
-          {uploadError && (
-            <p className="mt-1.5 text-xs text-error">{uploadError}</p>
-          )}
-        </div>
+      {/* Rappel — SKILLS_DEVELOPMENT sans certificat renseigné */}
+      {showCertHint && (
+        <p className="mt-3 text-xs text-gray400">
+          Aucun lien de certificat renseigné — ajoutez-en un via « Mettre à jour ».
+        </p>
       )}
     </div>
   );

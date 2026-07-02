@@ -91,6 +91,80 @@ const deptInclude = {
   },
 };
 
+// ── Helpers d'assemblage (extraits pour réduire la complexité cognitive) ──────
+
+type RawDept = Awaited<ReturnType<typeof prisma.department.findMany<{ include: typeof deptInclude }>>>[number];
+
+function buildManagerMaps(rawDepts: RawDept[]): {
+  managerOfUser: Map<string, string>;
+  teamOfUser: Map<string, string>;
+  directReportsOf: Map<string, string[]>;
+} {
+  const managerOfUser = new Map<string, string>();
+  const teamOfUser = new Map<string, string>();
+  const directReportsOf = new Map<string, string[]>();
+
+  for (const dept of rawDepts) {
+    for (const sd of dept.subDepartments) {
+      for (const team of sd.teams) {
+        for (const member of team.members) {
+          if (team.manager && member.id !== team.manager.id) {
+            managerOfUser.set(member.id, team.manager.id);
+          }
+          teamOfUser.set(member.id, team.name);
+        }
+        if (team.manager) {
+          const existing = directReportsOf.get(team.manager.id) ?? [];
+          const newReports = team.members
+            .filter((m) => m.id !== team.manager!.id)
+            .map((m) => m.id);
+          directReportsOf.set(team.manager.id, [...new Set([...existing, ...newReports])]);
+        }
+      }
+    }
+  }
+
+  return { managerOfUser, teamOfUser, directReportsOf };
+}
+
+function buildDeptOfUserMap(rawDepts: RawDept[]): Map<string, string> {
+  const deptOfUser = new Map<string, string>();
+
+  for (const dept of rawDepts) {
+    for (const user of dept.users) {
+      deptOfUser.set(user.id, dept.name);
+    }
+    for (const sd of dept.subDepartments) {
+      for (const team of sd.teams) {
+        for (const member of team.members) {
+          if (!deptOfUser.has(member.id)) deptOfUser.set(member.id, dept.name);
+        }
+        if (team.manager && !deptOfUser.has(team.manager.id)) {
+          deptOfUser.set(team.manager.id, dept.name);
+        }
+      }
+    }
+  }
+
+  return deptOfUser;
+}
+
+function collectAllUsers(rawDepts: RawDept[]): Map<string, OrgUser> {
+  const allUsersSet = new Map<string, OrgUser>();
+
+  for (const dept of rawDepts) {
+    for (const u of dept.users) allUsersSet.set(u.id, u);
+    for (const sd of dept.subDepartments) {
+      for (const team of sd.teams) {
+        if (team.manager) allUsersSet.set(team.manager.id, team.manager);
+        for (const m of team.members) allUsersSet.set(m.id, m);
+      }
+    }
+  }
+
+  return allUsersSet;
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function OrgChartPage() {
@@ -115,64 +189,9 @@ export default async function OrgChartPage() {
 
   // ── Construction du UserNode[] flat ──────────────────────────────────────
 
-  // Map userId → managerId (déduit de l'équipe dont l'utilisateur est membre)
-  const managerOfUser = new Map<string, string>();
-  // Map userId → teamName
-  const teamOfUser = new Map<string, string>();
-  // Map managerId → directReportIds
-  const directReportsOf = new Map<string, string[]>();
-
-  for (const dept of rawDepts) {
-    for (const sd of dept.subDepartments) {
-      for (const team of sd.teams) {
-        for (const member of team.members) {
-          if (team.manager && member.id !== team.manager.id) {
-            managerOfUser.set(member.id, team.manager.id);
-          }
-          teamOfUser.set(member.id, team.name);
-        }
-        if (team.manager) {
-          const existing = directReportsOf.get(team.manager.id) ?? [];
-          const newReports = team.members
-            .filter((m) => m.id !== team.manager!.id)
-            .map((m) => m.id);
-          directReportsOf.set(team.manager.id, [...new Set([...existing, ...newReports])]);
-        }
-      }
-    }
-  }
-
-  // Map userId → departmentName
-  const deptOfUser = new Map<string, string>();
-  for (const dept of rawDepts) {
-    for (const user of dept.users) {
-      deptOfUser.set(user.id, dept.name);
-    }
-    for (const sd of dept.subDepartments) {
-      for (const team of sd.teams) {
-        for (const member of team.members) {
-          if (!deptOfUser.has(member.id)) {
-            deptOfUser.set(member.id, dept.name);
-          }
-        }
-        if (team.manager && !deptOfUser.has(team.manager.id)) {
-          deptOfUser.set(team.manager.id, dept.name);
-        }
-      }
-    }
-  }
-
-  // Collecte de tous les utilisateurs uniques
-  const allUsersSet = new Map<string, OrgUser>();
-  for (const dept of rawDepts) {
-    for (const u of dept.users) allUsersSet.set(u.id, u);
-    for (const sd of dept.subDepartments) {
-      for (const team of sd.teams) {
-        if (team.manager) allUsersSet.set(team.manager.id, team.manager);
-        for (const m of team.members) allUsersSet.set(m.id, m);
-      }
-    }
-  }
+  const { managerOfUser, teamOfUser, directReportsOf } = buildManagerMaps(rawDepts);
+  const deptOfUser = buildDeptOfUserMap(rawDepts);
+  const allUsersSet = collectAllUsers(rawDepts);
 
   const userNodes: UserNode[] = Array.from(allUsersSet.values()).map((u) => ({
     id: u.id,

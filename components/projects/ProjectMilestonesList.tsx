@@ -4,24 +4,32 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
 import { deleteMilestone } from "@/actions/projects";
 import { MilestoneFormModal } from "@/components/projects/MilestoneFormModal";
+import { MilestoneStatusBadge } from "@/components/projects/MilestoneStatusBadge";
+import type { MilestoneStatus } from "@/lib/schemas/project";
 
 export type MockMilestone = {
   id: string;
   title: string;
   targetDate: string;
   achievedDate?: string;
+  responsibleUserName?: string;
+  status?: MilestoneStatus;
 };
+
+type TeamMemberOption = { id: string; fullName: string };
 
 type Props = {
   milestones: MockMilestone[];
   projectId: string;
   isEditable?: boolean;
+  teamMembers?: TeamMemberOption[];
 };
 
 export function ProjectMilestonesList({
   milestones,
   projectId,
   isEditable = false,
+  teamMembers = [],
 }: Props) {
   const [showModal, setShowModal] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -90,23 +98,31 @@ export function ProjectMilestonesList({
 
                   {/* Contenu */}
                   <div className="flex flex-1 items-start justify-between pb-5">
-                    <div className="flex flex-col gap-0.5">
-                      <span
-                        className={`text-sm font-medium ${
-                          isAchieved ? "text-facamDark" : "text-facamBlack"
-                        } ${isDeleting ? "opacity-50" : ""}`}
-                      >
-                        {milestone.title}
-                      </span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-sm font-medium ${
+                            isAchieved ? "text-facamDark" : "text-facamBlack"
+                          } ${isDeleting ? "opacity-50" : ""}`}
+                        >
+                          {milestone.title}
+                        </span>
+                        {milestone.status && <MilestoneStatusBadge status={milestone.status} />}
+                      </div>
                       <div className="flex items-center gap-3">
                         <span className="text-xs text-gray400">
-                          Cible :{" "}
+                          Réalisation :{" "}
                           {new Date(milestone.targetDate).toLocaleDateString("fr-FR", {
                             day: "2-digit",
                             month: "long",
                             year: "numeric",
                           })}
                         </span>
+                        {milestone.responsibleUserName && (
+                          <span className="text-xs text-gray400">
+                            Responsable : {milestone.responsibleUserName}
+                          </span>
+                        )}
                         {isAchieved && milestone.achievedDate && (
                           <span className="text-xs font-medium text-success">
                             Atteint le{" "}
@@ -142,6 +158,7 @@ export function ProjectMilestonesList({
       {showModal && (
         <MilestoneFormModal
           projectId={projectId}
+          teamMembers={teamMembers}
           onClose={() => setShowModal(false)}
         />
       )}

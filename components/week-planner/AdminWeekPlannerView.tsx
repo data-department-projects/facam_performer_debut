@@ -28,6 +28,18 @@ type Props = {
   weekLabel: string;
 };
 
+function patchPlannerStatus(
+  items: TeamMember[],
+  plannerId: string,
+  status: PlannerStatus,
+): TeamMember[] {
+  return items.map((m) =>
+    m.weekPlanner.id === plannerId
+      ? { ...m, weekPlanner: { ...m.weekPlanner, status } }
+      : m,
+  );
+}
+
 export function AdminWeekPlannerView({
   managers: initialManagers,
   ownPlanner,
@@ -43,23 +55,11 @@ export function AdminWeekPlannerView({
   const submittedCount = managers.filter((m) => m.weekPlanner.status === "SUBMITTED").length;
 
   function handleValidate(weekPlannerId: string) {
-    setManagers((prev) =>
-      prev.map((m) =>
-        m.weekPlanner.id === weekPlannerId
-          ? { ...m, weekPlanner: { ...m.weekPlanner, status: "VALIDATED" as const } }
-          : m,
-      ),
-    );
+    setManagers((prev) => patchPlannerStatus(prev, weekPlannerId, "VALIDATED"));
     startTransition(async () => {
       const result = await validateWeekPlanner(weekPlannerId);
       if (!result.success) {
-        setManagers((prev) =>
-          prev.map((m) =>
-            m.weekPlanner.id === weekPlannerId
-              ? { ...m, weekPlanner: { ...m.weekPlanner, status: "SUBMITTED" as const } }
-              : m,
-          ),
-        );
+        setManagers((prev) => patchPlannerStatus(prev, weekPlannerId, "SUBMITTED"));
       }
     });
   }
