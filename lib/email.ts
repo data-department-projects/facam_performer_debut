@@ -11,7 +11,7 @@ function getResendClient() {
   return new Resend(key);
 }
 
-const FROM = "FACAM PERFORMER <notifications@facam-performer.com>";
+const FROM = "FACAM PERFORMER <notifications@facamstairwaytogo.com>";
 
 export type EmailTemplate =
   | "otp-reset"
@@ -83,20 +83,26 @@ export async function sendEmail(params: {
   to: string;
   template: EmailTemplate;
   data: Record<string, string>;
-}): Promise<void> {
+}): Promise<boolean> {
   try {
     const resend = getResendClient();
     if (!resend) {
       console.warn("[lib/email] RESEND_API_KEY non configuré — email non envoyé");
-      return;
+      return false;
     }
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: FROM,
       to: params.to,
       subject: subjectFor(params.template),
       html: renderTemplate(params.template, params.data),
     });
+    if (result.error) {
+      console.error("[lib/email]", result.error);
+      return false;
+    }
+    return true;
   } catch (error) {
     console.error("[lib/email]", error);
+    return false;
   }
 }

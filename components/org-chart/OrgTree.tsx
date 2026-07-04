@@ -138,7 +138,7 @@ function AvatarCluster({ members }: { members: OrgUser[] }) {
   const shown = members.slice(0, 4);
   const rest = members.length - 4;
   return (
-    <div className="flex items-center">
+    <div className="hidden shrink-0 items-center sm:flex">
       <div className="flex -space-x-1.5">
         {shown.map((m) => {
           const cls = AVATAR_BG[m.role] ?? AVATAR_BG.COLLABORATOR;
@@ -395,11 +395,13 @@ function DeptNode({
   onDeleteTeam: (id: string) => void;
 }) {
   const expanded = expandedDepts.has(dept.id);
-  const hasContent = dept.children.length > 0 || dept.subDepartments.length > 0;
+  const hasContent =
+    dept.children.length > 0 || dept.subDepartments.length > 0 || dept.users.length > 0;
   const isRoot = depth === 0;
 
   const childCount = dept.children.length;
   const subDeptCount = dept.subDepartments.length;
+  const memberCount = dept.users.length;
 
   const ns = isRoot
     ? {
@@ -468,6 +470,15 @@ function DeptNode({
               )}
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              {memberCount > 0 && (
+                <span className="flex items-center gap-1 text-[10px] text-gray400">
+                  <Users size={9} />
+                  {memberCount} membre{memberCount !== 1 ? "s" : ""}
+                </span>
+              )}
+              {memberCount > 0 && (childCount > 0 || subDeptCount > 0) && (
+                <span className="text-[10px] text-gray300">·</span>
+              )}
               {childCount > 0 && (
                 <span className="flex items-center gap-1 text-[10px] text-gray400">
                   <Network size={9} />
@@ -488,6 +499,9 @@ function DeptNode({
               )}
             </div>
           </div>
+
+          {/* Cluster avatars des membres directs */}
+          {memberCount > 0 && !expanded && <AvatarCluster members={dept.users} />}
 
           {/* Actions admin */}
           {isAdmin && (
@@ -518,6 +532,15 @@ function DeptNode({
         <div
           className={`ml-6 mt-2 space-y-2 border-l-2 pl-4 ${ns.indentBorder}`}
         >
+          {/* Membres directement rattachés au département (hors équipe) */}
+          {dept.users.length > 0 && (
+            <div className="flex flex-wrap gap-2 pb-1">
+              {dept.users.map((u) => (
+                <MemberChip key={u.id} member={u} />
+              ))}
+            </div>
+          )}
+
           {/* Départements enfants (récursif) */}
           {dept.children.map((child) => (
             <DeptNode
@@ -704,25 +727,25 @@ export function OrgTree({ deptTree, allDepts, allUsers, isAdmin }: Props) {
       )}
 
       {/* Légende des niveaux */}
-      <div className="flex items-center gap-3 px-1">
-        <div className="flex items-center gap-1.5">
-          <div className="h-2.5 w-2.5 rounded-sm bg-facamBlue" />
-          <span className="text-[10px] text-gray400">Département mère</span>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <div className="h-2.5 w-2.5 shrink-0 rounded-sm bg-facamBlue" />
+          <span className="whitespace-nowrap text-[10px] text-gray400">Département mère</span>
         </div>
-        <span className="text-gray300 text-[10px]">·</span>
-        <div className="flex items-center gap-1.5">
-          <div className="h-2.5 w-2.5 rounded-sm bg-facamBlueMid" />
-          <span className="text-[10px] text-gray400">Département enfant</span>
+        <span className="hidden text-[10px] text-gray300 sm:inline">·</span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <div className="h-2.5 w-2.5 shrink-0 rounded-sm bg-facamBlueMid" />
+          <span className="whitespace-nowrap text-[10px] text-gray400">Département enfant</span>
         </div>
-        <span className="text-gray300 text-[10px]">·</span>
-        <div className="flex items-center gap-1.5">
-          <div className="h-2.5 w-2.5 rounded-sm bg-facamYellow" />
-          <span className="text-[10px] text-gray400">Sous-département</span>
+        <span className="hidden text-[10px] text-gray300 sm:inline">·</span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <div className="h-2.5 w-2.5 shrink-0 rounded-sm bg-facamYellow" />
+          <span className="whitespace-nowrap text-[10px] text-gray400">Sous-département</span>
         </div>
-        <span className="text-gray300 text-[10px]">·</span>
-        <div className="flex items-center gap-1.5">
-          <div className="h-2.5 w-2.5 rounded-sm bg-gray200" />
-          <span className="text-[10px] text-gray400">Équipe</span>
+        <span className="hidden text-[10px] text-gray300 sm:inline">·</span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <div className="h-2.5 w-2.5 shrink-0 rounded-sm bg-gray200" />
+          <span className="whitespace-nowrap text-[10px] text-gray400">Équipe</span>
         </div>
       </div>
 

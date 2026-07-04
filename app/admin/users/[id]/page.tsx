@@ -19,6 +19,7 @@ export default async function EditUserPage({
         fullName: true,
         email: true,
         role: true,
+        jobTitle: true,
         isActive: true,
         departmentId: true,
         teamId: true,

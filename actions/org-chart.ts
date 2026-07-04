@@ -27,6 +27,7 @@ export async function createDepartment(
       data: {
         name: parsed.data.name,
         parentDepartmentId: parsed.data.parentDepartmentId ?? null,
+        color: parsed.data.color ?? null,
       },
     });
     revalidatePath("/org-chart");
@@ -52,6 +53,7 @@ export async function updateDepartment(
       data: {
         name: parsed.data.name,
         parentDepartmentId: parsed.data.parentDepartmentId ?? null,
+        color: parsed.data.color ?? null,
       },
     });
     revalidatePath("/org-chart");

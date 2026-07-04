@@ -1,10 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, X, ChevronDown } from "lucide-react";
+import { Loader2, X, ChevronDown, Check } from "lucide-react";
 import { createDepartment, updateDepartment } from "@/actions/org-chart";
+import {
+  DEPARTMENT_COLORS,
+  DEPARTMENT_COLOR_SWATCHES,
+  type DepartmentColorValue,
+} from "@/lib/department-colors";
 
-type Dept = { id: string; name: string; parentDepartmentId?: string | null };
+type Dept = {
+  id: string;
+  name: string;
+  parentDepartmentId?: string | null;
+  color?: DepartmentColorValue | null;
+};
 
 type Props = {
   open: boolean;
@@ -19,6 +29,7 @@ export function DepartmentFormModal({ open, dept, parentDepartmentId, allDepts, 
   const [selectedParentId, setSelectedParentId] = useState<string>(
     dept?.parentDepartmentId ?? parentDepartmentId ?? "",
   );
+  const [color, setColor] = useState<DepartmentColorValue | null>(dept?.color ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -34,6 +45,7 @@ export function DepartmentFormModal({ open, dept, parentDepartmentId, allDepts, 
       const payload = {
         name,
         parentDepartmentId: selectedParentId || undefined,
+        color: color ?? undefined,
       };
       const result = dept
         ? await updateDepartment(dept.id, payload)
@@ -105,6 +117,52 @@ export function DepartmentFormModal({ open, dept, parentDepartmentId, allDepts, 
                 Ce département apparaîtra à l&apos;intérieur de{" "}
                 <span className="font-medium text-facamBlue">
                   {eligibleParents.find((d) => d.id === selectedParentId)?.name}
+                </span>{" "}
+                dans l&apos;organigramme.
+              </p>
+            )}
+          </div>
+
+          {/* Couleur (identification visuelle dans l'organigramme) */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-facamBlack">
+              Couleur <span className="font-normal text-gray400">(optionnel)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setColor(null)}
+                title="Sans couleur"
+                className={`flex h-8 w-8 items-center justify-center rounded-full border-2 bg-facamWhite text-gray400 transition-all ${
+                  color === null ? "border-facamBlue ring-2 ring-facamBlue/20" : "border-gray200 hover:border-gray300"
+                }`}
+              >
+                <X size={14} />
+              </button>
+              {DEPARTMENT_COLORS.map((c) => {
+                const swatch = DEPARTMENT_COLOR_SWATCHES[c];
+                const selected = color === c;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    title={swatch.label}
+                    aria-label={swatch.label}
+                    className={`flex h-8 w-8 items-center justify-center rounded-full ${swatch.dot} transition-all ${
+                      selected ? "ring-2 ring-offset-2 ring-facamDark" : "hover:scale-110"
+                    }`}
+                  >
+                    {selected && <Check size={14} className="text-white drop-shadow" />}
+                  </button>
+                );
+              })}
+            </div>
+            {color && (
+              <p className="text-xs text-gray400">
+                Les managers et collaborateurs de ce département apparaîtront avec un cadre{" "}
+                <span className={`font-medium ${DEPARTMENT_COLOR_SWATCHES[color].text}`}>
+                  {DEPARTMENT_COLOR_SWATCHES[color].label.toLowerCase()}
                 </span>{" "}
                 dans l&apos;organigramme.
               </p>

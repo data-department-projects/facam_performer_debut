@@ -30,7 +30,10 @@ export const projectSchema = z
     sponsorUserId: z.string().optional(),
     projectManagerId: z.string().min(1, "Le chef de projet est requis"),
     beneficiaryType: z.enum(["INTERNAL", "EXTERNAL"]).default("INTERNAL"),
-    beneficiaryDepartmentId: z.string().optional(),
+    beneficiaryDepartmentId: z
+      .string()
+      .optional()
+      .transform((v) => (v === "" ? undefined : v)),
     beneficiaryExternalName: z.string().optional(),
     teamMembers: z
       .array(
