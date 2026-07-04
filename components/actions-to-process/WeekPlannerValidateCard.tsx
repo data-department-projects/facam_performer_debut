@@ -36,7 +36,7 @@ export function WeekPlannerValidateCard({ planner }: Props) {
         </div>
       </div>
       <Link
-        href="/week-planner"
+        href={`/week-planner?week=${planner.weekStartDate}`}
         className="flex flex-shrink-0 items-center gap-1 rounded-[--radius-md] border border-[--color-gray-200] px-3 py-1.5 text-xs font-medium text-[--color-facamBlue] transition-colors hover:bg-[--color-facamBlueTint]"
       >
         Valider

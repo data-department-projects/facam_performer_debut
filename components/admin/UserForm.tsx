@@ -15,6 +15,7 @@ type UserData = {
   fullName: string;
   email: string;
   role: string;
+  jobTitle: string | null;
   isActive: boolean;
   departmentId: string;
   teamId: string | null;
@@ -47,6 +48,7 @@ export function UserForm({ mode, departments, user }: Props) {
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [role, setRole] = useState(user?.role ?? "COLLABORATOR");
+  const [jobTitle, setJobTitle] = useState(user?.jobTitle ?? "");
   const [departmentId, setDepartmentId] = useState(user?.departmentId ?? "");
   const [teamId, setTeamId] = useState(user?.teamId ?? "");
   const [password, setPassword] = useState("");
@@ -82,6 +84,7 @@ export function UserForm({ mode, departments, user }: Props) {
       fullName,
       email,
       role,
+      jobTitle,
       departmentId,
       teamId: teamId || undefined,
       ...(mode === "create" ? { password } : { password: password || undefined }),
@@ -112,7 +115,13 @@ export function UserForm({ mode, departments, user }: Props) {
         return;
       }
       if (sendOnCreate && password) {
-        try { await sendUserCredentials(result.userId, password); } catch {}
+        const sendResult = await sendUserCredentials(result.userId, password);
+        if (!sendResult.success) {
+          setError(
+            `Utilisateur créé, mais ${sendResult.error?.toLowerCase() ?? "l'envoi des identifiants a échoué."}`,
+          );
+          return;
+        }
       }
       router.push("/admin/users");
     }
@@ -195,6 +204,19 @@ export function UserForm({ mode, departments, user }: Props) {
               <option value="MANAGER">Manager</option>
               <option value="ADMIN">Administrateur</option>
             </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <FieldLabel htmlFor="jobTitle">Poste</FieldLabel>
+            <input
+              id="jobTitle"
+              type="text"
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value)}
+              placeholder="Responsable IT & Support"
+              className={inputClass}
+              required
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">

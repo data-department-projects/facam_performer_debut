@@ -105,7 +105,7 @@ export async function sendUserCredentials(
       select: { email: true, fullName: true },
     });
 
-    await sendEmail({
+    const sent = await sendEmail({
       to: user.email,
       template: "credentials",
       data: {
@@ -114,6 +114,10 @@ export async function sendUserCredentials(
         password: plainPassword,
       },
     });
+
+    if (!sent) {
+      return { success: false, error: "Le mot de passe a été enregistré, mais l'email n'a pas pu être envoyé." };
+    }
 
     return { success: true };
   } catch (error) {

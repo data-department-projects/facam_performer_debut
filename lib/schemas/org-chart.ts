@@ -1,11 +1,29 @@
 import { z } from "zod";
 
+export const DEPARTMENT_COLORS = [
+  "BLUE",
+  "GREEN",
+  "YELLOW",
+  "PURPLE",
+  "ORANGE",
+  "PINK",
+  "TEAL",
+  "GRAY",
+  "RED",
+  "INDIGO",
+  "CYAN",
+  "LIME",
+] as const;
+
+export type DepartmentColorValue = (typeof DEPARTMENT_COLORS)[number];
+
 export const createDepartmentSchema = z.object({
   name: z
     .string()
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(100, "Le nom ne peut pas dépasser 100 caractères"),
   parentDepartmentId: z.string().optional(),
+  color: z.enum(DEPARTMENT_COLORS).optional(),
 });
 
 export const updateDepartmentSchema = z.object({
@@ -14,6 +32,7 @@ export const updateDepartmentSchema = z.object({
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(100, "Le nom ne peut pas dépasser 100 caractères"),
   parentDepartmentId: z.string().nullable().optional(),
+  color: z.enum(DEPARTMENT_COLORS).nullable().optional(),
 });
 
 export type CreateDepartmentInput = z.infer<typeof createDepartmentSchema>;
