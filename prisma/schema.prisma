@@ -18,6 +18,21 @@ enum Role {
   INTERN
 }
 
+enum DepartmentColor {
+  BLUE
+  GREEN
+  YELLOW
+  PURPLE
+  ORANGE
+  PINK
+  TEAL
+  GRAY
+  RED
+  INDIGO
+  CYAN
+  LIME
+}
+
 enum NotificationConsent {
   NOT_ASKED
   ACCEPTED
@@ -148,11 +163,12 @@ enum MilestoneStatus {
 // ============================================================
 
 model Department {
-  id                 String   @id @default(uuid())
+  id                 String           @id @default(uuid())
   name               String
   parentDepartmentId String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  color              DepartmentColor?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   parentDepartment     Department?           @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id])
   childDepartments     Department[]          @relation("DepartmentHierarchy")
@@ -204,6 +220,7 @@ model User {
   email                 String              @unique
   passwordHash          String
   role                  Role
+  jobTitle              String?
   departmentId          String
   teamId                String?
   isActive              Boolean             @default(true)

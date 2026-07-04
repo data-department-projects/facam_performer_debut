@@ -17,6 +17,10 @@ export const createUserSchema = z.object({
     .max(100),
   email: facamEmail,
   role: z.enum(ROLES),
+  jobTitle: z
+    .string()
+    .min(2, "Le poste doit contenir au moins 2 caractères")
+    .max(100, "Le poste ne peut pas dépasser 100 caractères"),
   departmentId: z.string().min(1, "Le département est requis"),
   teamId: z.string().optional(),
   password: z
@@ -31,6 +35,10 @@ export const updateUserSchema = z.object({
     .max(100),
   email: facamEmail,
   role: z.enum(ROLES),
+  jobTitle: z
+    .string()
+    .min(2, "Le poste doit contenir au moins 2 caractères")
+    .max(100, "Le poste ne peut pas dépasser 100 caractères"),
   departmentId: z.string().min(1, "Le département est requis"),
   teamId: z.string().optional(),
   password: z

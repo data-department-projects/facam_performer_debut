@@ -35,11 +35,15 @@ export async function requestPasswordReset(
       data: { userId: user.id, code, expiresAt },
     });
 
-    await sendEmail({
+    const sent = await sendEmail({
       to: email,
       template: "otp-reset",
       data: { name: user.fullName, code, expiresIn: String(OTP_EXPIRATION_MINUTES) },
     });
+
+    if (!sent) {
+      return { success: false, error: "Impossible d'envoyer l'email de réinitialisation. Réessayez plus tard." };
+    }
 
     return { success: true };
   } catch (error) {

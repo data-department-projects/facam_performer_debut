@@ -178,7 +178,14 @@ export function ProjectForm({ users, departments, projectId, defaultValues, onSu
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+            e.preventDefault();
+          }
+        }}
+      >
         <div className="rounded-xl border border-gray200 bg-facamWhite p-6 shadow-sm">
           {/* ─── Onglet 1 : Identité ─── */}
           {activeTab === 1 && (
