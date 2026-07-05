@@ -27,7 +27,6 @@ export async function createDepartment(
       data: {
         name: parsed.data.name,
         parentDepartmentId: parsed.data.parentDepartmentId ?? null,
-        responsableId: parsed.data.responsableId ?? null,
         color: parsed.data.color ?? null,
       },
     });
@@ -54,7 +53,6 @@ export async function updateDepartment(
       data: {
         name: parsed.data.name,
         parentDepartmentId: parsed.data.parentDepartmentId ?? null,
-        responsableId: parsed.data.responsableId ?? null,
         color: parsed.data.color ?? null,
       },
     });

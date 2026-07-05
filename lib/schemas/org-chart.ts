@@ -23,7 +23,6 @@ export const createDepartmentSchema = z.object({
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(100, "Le nom ne peut pas dépasser 100 caractères"),
   parentDepartmentId: z.string().optional(),
-  responsableId: z.string().optional(),
   color: z.enum(DEPARTMENT_COLORS).optional(),
 });
 
@@ -33,7 +32,6 @@ export const updateDepartmentSchema = z.object({
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(100, "Le nom ne peut pas dépasser 100 caractères"),
   parentDepartmentId: z.string().nullable().optional(),
-  responsableId: z.string().nullable().optional(),
   color: z.enum(DEPARTMENT_COLORS).nullable().optional(),
 });
 

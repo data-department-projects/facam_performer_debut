@@ -691,7 +691,6 @@ export function OrgTree({ deptTree, allDepts, allUsers, isAdmin }: Readonly<Prop
           key={`empty-${String(deptModal.open)}`}
           open={deptModal.open}
           allDepts={allDepts}
-          allUsers={allUsers}
           onClose={() => setDeptModal({ open: false })}
         />
       </div>
@@ -797,7 +796,6 @@ export function OrgTree({ deptTree, allDepts, allUsers, isAdmin }: Readonly<Prop
         dept={deptModal.dept}
         parentDepartmentId={deptModal.parentDepartmentId}
         allDepts={allDepts}
-        allUsers={allUsers}
         onClose={() => setDeptModal({ open: false })}
       />
       <SubDepartmentFormModal
