@@ -20,6 +20,13 @@ import { Label } from "@/components/ui/label";
 
 type Step = "request" | "verify" | "password" | "success";
 
+const CARD_TITLES: Record<Step, string> = {
+  request: "Mot de passe oublié",
+  verify: "Vérification OTP",
+  password: "Nouveau mot de passe",
+  success: "Mot de passe mis à jour",
+};
+
 const OTP_LENGTH = 6;
 const OTP_SECONDS = 10 * 60;
 
@@ -364,15 +371,7 @@ export function OtpResetForm() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
 
-  // Titre de la card selon l'étape
-  const cardTitle =
-    step === "request"
-      ? "Mot de passe oublié"
-      : step === "verify"
-        ? "Vérification OTP"
-        : step === "password"
-          ? "Nouveau mot de passe"
-          : "Mot de passe mis à jour";
+  const cardTitle = CARD_TITLES[step];
 
   return (
     <>

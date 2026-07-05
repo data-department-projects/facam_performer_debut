@@ -34,6 +34,11 @@ type Props = {
   onSuccess: () => void;
 };
 
+function getSubmitLabel(mode: "create" | "edit", isPending: boolean): string {
+  if (isPending) return mode === "create" ? "Création..." : "Enregistrement...";
+  return mode === "create" ? "Créer la tâche" : "Enregistrer";
+}
+
 export function GanttTaskFormModal({
   mode,
   projectId,
@@ -317,13 +322,7 @@ export function GanttTaskFormModal({
                 disabled={isPending}
                 className="rounded-lg bg-facamBlue px-4 py-2 text-sm font-semibold text-facamWhite hover:bg-facamDark transition-colors disabled:opacity-60"
               >
-                {isPending
-                  ? mode === "create"
-                    ? "Création..."
-                    : "Enregistrement..."
-                  : mode === "create"
-                    ? "Créer la tâche"
-                    : "Enregistrer"}
+                {getSubmitLabel(mode, isPending)}
               </button>
             </div>
           </div>

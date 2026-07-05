@@ -28,7 +28,7 @@ function isOverdue(dueDate: string, status: "PENDING" | "DONE") {
   return new Date(dueDate + "T00:00:00") < new Date(new Date().toDateString());
 }
 
-export function MyCommitteeActionsList({ actions }: Props) {
+export function MyCommitteeActionsList({ actions }: Readonly<Props>) {
   const [optimistic, setOptimistic] = useState<Record<string, "PENDING" | "DONE">>({});
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +69,8 @@ export function MyCommitteeActionsList({ actions }: Props) {
         <p className="rounded-md bg-errorLight px-3 py-2 text-xs text-error">{error}</p>
       )}
       <div className="overflow-hidden rounded-xl border border-gray200 bg-facamWhite shadow-sm">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px]">
           <thead>
             <tr className="border-b border-gray200">
               <th className="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">Action</th>
@@ -139,6 +140,7 @@ export function MyCommitteeActionsList({ actions }: Props) {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
