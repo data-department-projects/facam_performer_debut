@@ -95,9 +95,13 @@ export default async function CommitteesPage() {
   const canCreate = role === "ADMIN" || role === "MANAGER";
 
   const dbCommittees = await prisma.committee.findMany({
-    where: role === "MANAGER"
-      ? { OR: [{ members: { some: { userId } } }, { responsibleUserId: userId }] }
-      : undefined,
+    where: {
+      OR: [
+        { createdByUserId: userId },
+        { responsibleUserId: userId },
+        { members: { some: { userId } } },
+      ],
+    },
     include: committeeInclude,
     orderBy: { createdAt: "desc" },
   });

@@ -17,7 +17,7 @@ export async function createCommittee(
   rawData: unknown,
 ): Promise<{ success: boolean; data?: { id: string }; error?: string }> {
   try {
-    await requireRole(["ADMIN", "MANAGER"]);
+    const currentUser = await requireRole(["ADMIN", "MANAGER"]);
 
     const parsed = createCommitteeSchema.safeParse(rawData);
     if (!parsed.success) {
@@ -39,6 +39,7 @@ export async function createCommittee(
         name: input.name,
         description: input.description ?? null,
         responsibleUserId: input.responsibleUserId,
+        createdByUserId: currentUser.id,
         objectives: input.objectives,
         frequency: input.frequency,
         projectId: input.projectId ?? null,
@@ -82,15 +83,13 @@ export async function planMeeting(
 
     const input: PlanMeetingInput = parsed.data;
 
-    if (currentUser.role === "MANAGER") {
-      const committee = await prisma.committee.findUnique({
-        where: { id: input.committeeId },
-        select: { responsibleUserId: true },
-      });
-      if (!committee) return { success: false, error: "Comité introuvable." };
-      if (committee.responsibleUserId !== currentUser.id) {
-        return { success: false, error: "Accès non autorisé." };
-      }
+    const committee = await prisma.committee.findUnique({
+      where: { id: input.committeeId },
+      select: { responsibleUserId: true, createdByUserId: true },
+    });
+    if (!committee) return { success: false, error: "Comité introuvable." };
+    if (committee.responsibleUserId !== currentUser.id && committee.createdByUserId !== currentUser.id) {
+      return { success: false, error: "Accès non autorisé." };
     }
 
     const [year, month, day] = input.meetingDate.split("-").map(Number);
@@ -140,14 +139,20 @@ export async function createCommitteeAction(
 
     const meeting = await prisma.committeeMeeting.findUnique({
       where: { id: input.meetingId },
-      select: { committeeId: true, committee: { select: { responsibleUserId: true } } },
+      select: {
+        committeeId: true,
+        committee: { select: { responsibleUserId: true, createdByUserId: true } },
+      },
     });
 
     if (!meeting) {
       return { success: false, error: "Réunion introuvable." };
     }
 
-    if (currentUser.role === "MANAGER" && meeting.committee.responsibleUserId !== currentUser.id) {
+    if (
+      meeting.committee.responsibleUserId !== currentUser.id &&
+      meeting.committee.createdByUserId !== currentUser.id
+    ) {
       return { success: false, error: "Accès non autorisé." };
     }
 
@@ -190,7 +195,7 @@ export async function updateCommitteeActionStatus(
             committee: {
               select: {
                 responsibleUserId: true,
-                members: { select: { userId: true } },
+                createdByUserId: true,
               },
             },
           },
@@ -200,13 +205,11 @@ export async function updateCommitteeActionStatus(
 
     if (!action) return { success: false, error: "Action introuvable." };
 
-    if (currentUser.role === "MANAGER") {
-      const { committee } = action.meeting;
-      const isMember = committee.members.some((m) => m.userId === currentUser.id);
-      const isResponsible = committee.responsibleUserId === currentUser.id;
-      if (!isMember && !isResponsible) {
-        return { success: false, error: "Accès non autorisé." };
-      }
+    const { committee } = action.meeting;
+    const isResponsible = committee.responsibleUserId === currentUser.id;
+    const isCreator = committee.createdByUserId === currentUser.id;
+    if (!isResponsible && !isCreator) {
+      return { success: false, error: "Accès non autorisé." };
     }
 
     await prisma.committeeAction.update({

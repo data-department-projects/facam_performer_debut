@@ -13,21 +13,28 @@ type Dept = {
   id: string;
   name: string;
   parentDepartmentId?: string | null;
+  responsableId?: string | null;
   color?: DepartmentColorValue | null;
 };
+
+type UserOption = { id: string; fullName: string };
 
 type Props = {
   open: boolean;
   dept?: Dept;
   parentDepartmentId?: string;
   allDepts: { id: string; name: string; parentDepartmentId: string | null }[];
+  allUsers: UserOption[];
   onClose: () => void;
 };
 
-export function DepartmentFormModal({ open, dept, parentDepartmentId, allDepts, onClose }: Props) {
+export function DepartmentFormModal({ open, dept, parentDepartmentId, allDepts, allUsers, onClose }: Readonly<Props>) {
   const [name, setName] = useState(dept?.name ?? "");
   const [selectedParentId, setSelectedParentId] = useState<string>(
     dept?.parentDepartmentId ?? parentDepartmentId ?? "",
+  );
+  const [selectedResponsableId, setSelectedResponsableId] = useState<string>(
+    dept?.responsableId ?? "",
   );
   const [color, setColor] = useState<DepartmentColorValue | null>(dept?.color ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +52,7 @@ export function DepartmentFormModal({ open, dept, parentDepartmentId, allDepts, 
       const payload = {
         name,
         parentDepartmentId: selectedParentId || undefined,
+        responsableId: selectedResponsableId || undefined,
         color: color ?? undefined,
       };
       const result = dept
@@ -121,6 +129,33 @@ export function DepartmentFormModal({ open, dept, parentDepartmentId, allDepts, 
                 dans l&apos;organigramme.
               </p>
             )}
+          </div>
+
+          {/* Responsable du département (optionnel) */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="dept-responsable" className="text-sm font-medium text-facamBlack">
+              Responsable{" "}
+              <span className="font-normal text-gray400">(optionnel)</span>
+            </label>
+            <div className="relative">
+              <select
+                id="dept-responsable"
+                value={selectedResponsableId}
+                onChange={(e) => setSelectedResponsableId(e.target.value)}
+                className="w-full appearance-none rounded-md border border-gray300 bg-facamWhite px-3 py-2 pr-8 text-sm text-facamBlack focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
+              >
+                <option value="">— Aucun responsable —</option>
+                {allUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.fullName}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray400"
+              />
+            </div>
           </div>
 
           {/* Couleur (identification visuelle dans l'organigramme) */}

@@ -469,6 +469,12 @@ function DeptNode({
                 </span>
               )}
             </div>
+            {dept.responsableName && (
+              <p className="mt-0.5 flex items-center gap-1 text-[10px] text-gray400">
+                <Shield size={9} className="text-facamBlue" />
+                Responsable : {dept.responsableName}
+              </p>
+            )}
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
               {memberCount > 0 && (
                 <span className="flex items-center gap-1 text-[10px] text-gray400">
@@ -598,7 +604,7 @@ function DeptNode({
 
 // ── OrgTree principal ─────────────────────────────────────────────────────────
 
-export function OrgTree({ deptTree, allDepts, allUsers, isAdmin }: Props) {
+export function OrgTree({ deptTree, allDepts, allUsers, isAdmin }: Readonly<Props>) {
   const [expandedDepts, setExpandedDepts] = useState<Set<string>>(
     new Set(deptTree.map((d) => d.id)),
   );
@@ -685,6 +691,7 @@ export function OrgTree({ deptTree, allDepts, allUsers, isAdmin }: Props) {
           key={`empty-${String(deptModal.open)}`}
           open={deptModal.open}
           allDepts={allDepts}
+          allUsers={allUsers}
           onClose={() => setDeptModal({ open: false })}
         />
       </div>
@@ -790,6 +797,7 @@ export function OrgTree({ deptTree, allDepts, allUsers, isAdmin }: Props) {
         dept={deptModal.dept}
         parentDepartmentId={deptModal.parentDepartmentId}
         allDepts={allDepts}
+        allUsers={allUsers}
         onClose={() => setDeptModal({ open: false })}
       />
       <SubDepartmentFormModal
