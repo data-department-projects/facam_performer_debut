@@ -43,7 +43,7 @@ export function CollaboratorWeekPlannerView({
   validatorLabel,
   noValidation = false,
   hideWeekNav = false,
-}: Props) {
+}: Readonly<Props>) {
   const router = useRouter();
   const [planner, setPlanner] = useState(initialPlanner);
   const [activeDay, setActiveDay] = useState<PlannedDay>(() => {

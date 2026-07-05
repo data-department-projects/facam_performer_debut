@@ -165,12 +165,12 @@ export function DashboardFilters({
   filters,
   filterOptions,
   periodLabel,
-}: {
+}: Readonly<{
   role: string;
   filters: DashboardActiveFilters;
   filterOptions: DashboardFilterOptions;
   periodLabel?: string;
-}) {
+}>) {
   const router = useRouter();
   const pathname = usePathname();
 

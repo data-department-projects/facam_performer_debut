@@ -52,13 +52,13 @@ function PersonCard({
   size = "md",
   headcount,
   onClick,
-}: {
+}: Readonly<{
   user: HierarchyUser;
   roleOverrideLabel?: string;
   size?: "lg" | "md" | "sm";
   headcount?: number;
   onClick?: () => void;
-}) {
+}>) {
   const swatch = getDepartmentSwatch(user.color);
   const dims =
     size === "lg"
@@ -97,12 +97,12 @@ function PersonCard({
 
 // ── Connecteurs ────────────────────────────────────────────────────────────────
 
-function VerticalConnector({ height = "h-6" }: { height?: string }) {
+function VerticalConnector({ height = "h-6" }: Readonly<{ height?: string }>) {
   return <div className={`mx-auto ${height} w-px bg-gray300`} />;
 }
 
 /** Rangée d'éléments reliés à un même parent par une ligne horizontale (bus) + un drop vertical chacun. */
-function ConnectedRow({ children }: { children: React.ReactNode[] }) {
+function ConnectedRow({ children }: Readonly<{ children: React.ReactNode[] }>) {
   if (children.length === 0) return null;
   if (children.length === 1) {
     return (
@@ -136,19 +136,22 @@ export type SelectedPerson = {
 function PersonDetailPanel({
   selected,
   onClose,
-}: {
+}: Readonly<{
   selected: SelectedPerson | null;
   onClose: () => void;
-}) {
+}>) {
   const open = selected !== null;
   const swatch = getDepartmentSwatch(selected?.user.color ?? null);
 
   return (
     <>
       {/* Overlay */}
-      <div
+      <button
+        type="button"
+        aria-label="Fermer le panneau"
         onClick={onClose}
-        className={`fixed inset-0 z-40 bg-facamBlack/30 transition-opacity ${
+        tabIndex={open ? 0 : -1}
+        className={`fixed inset-0 z-40 cursor-default bg-facamBlack/30 transition-opacity ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
@@ -268,10 +271,10 @@ function PersonDetailPanel({
 function ManagerGroupBlock({
   group,
   onSelectPerson,
-}: {
+}: Readonly<{
   group: ManagerGroup;
   onSelectPerson: (p: SelectedPerson) => void;
-}) {
+}>) {
   return (
     <div className="flex flex-col items-center gap-0">
       <PersonCard
@@ -301,7 +304,7 @@ function ManagerGroupBlock({
 
 // ── Vue principale ──────────────────────────────────────────────────────────────
 
-export function OrgHierarchyView({ admins, managerGroups, unassigned, legend, totalHeadcount }: Props) {
+export function OrgHierarchyView({ admins, managerGroups, unassigned, legend, totalHeadcount }: Readonly<Props>) {
   const hasManagers = managerGroups.length > 0;
   const [selected, setSelected] = useState<SelectedPerson | null>(null);
 

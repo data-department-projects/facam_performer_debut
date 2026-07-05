@@ -54,7 +54,7 @@ export function AdminWeekPlannerView({
   assignedGanttTasks,
   weekStartDate,
   weekLabel,
-}: Props) {
+}: Readonly<Props>) {
   const [activeTab, setActiveTab] = useState<Tab>("planning");
   const [managers, setManagers] = useState(initialManagers);
   const [, startTransition] = useTransition();
@@ -124,10 +124,10 @@ export function AdminWeekPlannerView({
 function ManagersList({
   managers,
   onValidate,
-}: {
+}: Readonly<{
   managers: TeamMember[];
   onValidate: (id: string) => void;
-}) {
+}>) {
   const submittedCount = managers.filter((m) => m.weekPlanner.status === "SUBMITTED").length;
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -163,15 +163,7 @@ function ManagersList({
                     disabled={!hasPlanner}
                     className="flex flex-1 items-center gap-3 text-left disabled:cursor-default"
                   >
-                    {hasPlanner ? (
-                      expanded ? (
-                        <ChevronDown size={14} className="shrink-0 text-gray400" />
-                      ) : (
-                        <ChevronRight size={14} className="shrink-0 text-gray400" />
-                      )
-                    ) : (
-                      <span className="w-3.5" />
-                    )}
+                    <ExpandChevron hasPlanner={hasPlanner} expanded={expanded} />
                     <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-facamBlue text-xs font-semibold text-facamWhite">
                       {manager.initials}
                     </div>
@@ -205,9 +197,16 @@ function ManagersList({
   );
 }
 
+function ExpandChevron({ hasPlanner, expanded }: Readonly<{ hasPlanner: boolean; expanded: boolean }>) {
+  if (!hasPlanner) return <span className="w-3.5" />;
+  return expanded
+    ? <ChevronDown size={14} className="shrink-0 text-gray400" />
+    : <ChevronRight size={14} className="shrink-0 text-gray400" />;
+}
+
 // ── Aperçu en lecture seule des tâches planifiées ────────────────────────────
 
-function WeekTaskPreview({ tasks }: { tasks: NonNullable<TeamMember["weekPlanner"]["tasks"]> }) {
+function WeekTaskPreview({ tasks }: Readonly<{ tasks: NonNullable<TeamMember["weekPlanner"]["tasks"]> }>) {
   if (tasks.length === 0) {
     return (
       <p className="border-t border-gray100 px-5 py-3 text-xs text-gray400">
@@ -232,7 +231,7 @@ function WeekTaskPreview({ tasks }: { tasks: NonNullable<TeamMember["weekPlanner
   );
 }
 
-function ManagerStatusLabel({ status }: { status: PlannerStatus }) {
+function ManagerStatusLabel({ status }: Readonly<{ status: PlannerStatus }>) {
   if (status === "SUBMITTED") return <p className="text-xs text-warning">En attente de validation</p>;
   if (status === "VALIDATED") return <p className="text-xs text-success">Semaine validée</p>;
   return <p className="text-xs text-gray400">Pas encore soumis</p>;

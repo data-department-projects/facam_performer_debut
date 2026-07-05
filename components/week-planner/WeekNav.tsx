@@ -13,7 +13,7 @@ function offsetDate(iso: string, days: number): string {
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().split("T")[0];
 }
 
-export function WeekNav({ weekStartDate, weekLabel }: Props) {
+export function WeekNav({ weekStartDate, weekLabel }: Readonly<Props>) {
   const router = useRouter();
 
   function change(delta: number) {

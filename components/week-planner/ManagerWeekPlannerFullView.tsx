@@ -23,7 +23,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "team", label: "Mon Équipe" },
 ];
 
-export function ManagerWeekPlannerFullView({ ownPlanner, confirmedProjects, assignedGanttTasks, weekStartDate, weekLabel, teamMembers }: Props) {
+export function ManagerWeekPlannerFullView({ ownPlanner, confirmedProjects, assignedGanttTasks, weekStartDate, weekLabel, teamMembers }: Readonly<Props>) {
   const [activeTab, setActiveTab] = useState<Tab>("planning");
 
   return (

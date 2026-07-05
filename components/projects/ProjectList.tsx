@@ -25,7 +25,7 @@ type Props = {
   projects: MockProject[];
 };
 
-export function ProjectList({ projects }: Props) {
+export function ProjectList({ projects }: Readonly<Props>) {
   return (
     <div className="flex flex-col gap-6">
       {/* En-tête */}

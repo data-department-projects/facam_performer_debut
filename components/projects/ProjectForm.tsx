@@ -96,7 +96,7 @@ type Props = {
   onSuccess?: () => void;
 };
 
-export function ProjectForm({ users, departments, projectId, defaultValues, onSuccess }: Props) {
+export function ProjectForm({ users, departments, projectId, defaultValues, onSuccess }: Readonly<Props>) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>(1);
 

@@ -175,13 +175,13 @@ export function DashboardView({
   userName,
   filters,
   filterOptions,
-}: {
+}: Readonly<{
   role: string;
   data: DashboardData;
   userName: string | null;
   filters: DashboardActiveFilters;
   filterOptions: DashboardFilterOptions;
-}) {
+}>) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
