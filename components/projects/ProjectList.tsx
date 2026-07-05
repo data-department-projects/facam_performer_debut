@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, CheckCircle2, Clock } from "lucide-react";
+import { Plus, CheckCircle2, Clock, Eye } from "lucide-react";
 import { ProjectStatusBadge } from "@/components/projects/ProjectStatusBadge";
 
 export type MockProject = {
@@ -25,7 +25,7 @@ type Props = {
   projects: MockProject[];
 };
 
-export function ProjectList({ projects }: Props) {
+export function ProjectList({ projects }: Readonly<Props>) {
   return (
     <div className="flex flex-col gap-6">
       {/* En-tête */}
@@ -85,6 +85,9 @@ export function ProjectList({ projects }: Props) {
                 <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
                   Échéance
                 </th>
+                <th className="px-6 py-3 text-right text-[10px] font-medium uppercase tracking-widest text-gray500">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -99,12 +102,9 @@ export function ProjectList({ projects }: Props) {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <Link
-                      href={`/projects/${project.id}`}
-                      className="text-sm font-medium text-facamBlue hover:underline"
-                    >
+                    <span className="text-sm font-medium text-facamBlack">
                       {project.name}
-                    </Link>
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-facamBlack">
@@ -153,6 +153,15 @@ export function ProjectList({ projects }: Props) {
                         { day: "2-digit", month: "short", year: "numeric" },
                       )}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <Link
+                      href={`/projects/${project.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-gray200 px-3 py-1.5 text-xs font-medium text-facamDark hover:border-facamBlue hover:text-facamBlue transition-colors"
+                    >
+                      <Eye size={13} />
+                      Voir
+                    </Link>
                   </td>
                 </tr>
               ))}

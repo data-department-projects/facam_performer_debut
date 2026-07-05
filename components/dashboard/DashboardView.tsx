@@ -175,13 +175,13 @@ export function DashboardView({
   userName,
   filters,
   filterOptions,
-}: {
+}: Readonly<{
   role: string;
   data: DashboardData;
   userName: string | null;
   filters: DashboardActiveFilters;
   filterOptions: DashboardFilterOptions;
-}) {
+}>) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -247,7 +247,12 @@ export function DashboardView({
       </div>
 
       {/* ── Filtres ──────────────────────────────────────────────── */}
-      <DashboardFilters role={role} filters={filters} filterOptions={filterOptions} />
+      <DashboardFilters
+        role={role}
+        filters={filters}
+        filterOptions={filterOptions}
+        periodLabel={data.periodLabel}
+      />
 
       {/* ── KPI cards ─────────────────────────────────────────────── */}
       <StatsBar kpis={data.kpis} />

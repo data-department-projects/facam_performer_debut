@@ -13,6 +13,53 @@ const PERIOD_OPTIONS: { value: DashboardPeriod; label: string }[] = [
   { value: "year", label: "Année" },
 ];
 
+const MONTH_OPTIONS = [
+  "janvier", "février", "mars", "avril", "mai", "juin",
+  "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+].map((label, i) => ({ value: String(i + 1), label: label.charAt(0).toUpperCase() + label.slice(1) }));
+
+const MONTHS_FR_SHORT = [
+  "janv.", "févr.", "mars", "avr.", "mai", "juin",
+  "juil.", "août", "sept.", "oct.", "nov.", "déc.",
+];
+
+const QUARTER_OPTIONS = [
+  { value: "1", label: "T1 (jan.-mars)" },
+  { value: "2", label: "T2 (avr.-juin)" },
+  { value: "3", label: "T3 (juil.-sept.)" },
+  { value: "4", label: "T4 (oct.-déc.)" },
+];
+
+function getSelectableYears(): { value: string; label: string }[] {
+  const current = new Date().getUTCFullYear();
+  const years: { value: string; label: string }[] = [];
+  for (let y = current + 1; y >= current - 5; y--) {
+    years.push({ value: String(y), label: String(y) });
+  }
+  return years;
+}
+
+function getWeeksInMonth(year: number, month: number): { value: string; label: string }[] {
+  const firstDay = new Date(Date.UTC(year, month - 1, 1));
+  const lastDay = new Date(Date.UTC(year, month, 0));
+  const dow = firstDay.getUTCDay();
+  const offsetToMonday = dow === 0 ? -6 : 1 - dow;
+
+  let monday = new Date(Date.UTC(year, month - 1, 1 + offsetToMonday));
+  while (monday.getTime() < firstDay.getTime()) {
+    monday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000);
+  }
+
+  const weeks: { value: string; label: string }[] = [];
+  while (monday.getTime() <= lastDay.getTime()) {
+    const friday = new Date(monday.getTime() + 4 * 24 * 60 * 60 * 1000);
+    const label = `${String(monday.getUTCDate()).padStart(2, "0")}–${String(friday.getUTCDate()).padStart(2, "0")} ${MONTHS_FR_SHORT[friday.getUTCMonth()]}`;
+    weeks.push({ value: monday.toISOString().slice(0, 10), label });
+    monday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000);
+  }
+  return weeks;
+}
+
 const PROJECT_STATUS_OPTIONS = [
   { value: "ALL", label: "Tous les statuts" },
   { value: "PENDING", label: "En attente" },
@@ -48,6 +95,10 @@ function buildUrl(
   const params = new URLSearchParams();
 
   params.set("period", merged.period);
+  params.set("year", String(merged.year));
+  if (merged.period === "month" || merged.period === "week") params.set("month", String(merged.month));
+  if (merged.period === "quarter") params.set("quarter", String(merged.quarter));
+  if (merged.period === "week") params.set("week", merged.week);
   if (merged.departmentId) params.set("dept", merged.departmentId);
   if (merged.projectStatus && merged.projectStatus !== "ALL") params.set("status", merged.projectStatus);
   if (merged.strategicPriority && merged.strategicPriority !== "ALL") params.set("priority", merged.strategicPriority);
@@ -113,11 +164,13 @@ export function DashboardFilters({
   role,
   filters,
   filterOptions,
-}: {
+  periodLabel,
+}: Readonly<{
   role: string;
   filters: DashboardActiveFilters;
   filterOptions: DashboardFilterOptions;
-}) {
+  periodLabel?: string;
+}>) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -128,7 +181,15 @@ export function DashboardFilters({
   }
 
   function resetFilters() {
-    router.push(`${pathname}?period=${filters.period}`);
+    router.push(
+      buildUrl(pathname, filters, {
+        departmentId: null,
+        projectStatus: null,
+        strategicPriority: null,
+        memberId: null,
+        objectiveType: null,
+      }),
+    );
   }
 
   return (
@@ -170,6 +231,60 @@ export function DashboardFilters({
             ))}
           </div>
         </div>
+
+        {/* ── Année (toujours visible — ancre pour mois/trimestre/année/semaine) ── */}
+        <SelectFilter
+          label="Année"
+          value={String(filters.year)}
+          options={getSelectableYears()}
+          onChange={(v) => {
+            const year = Number(v);
+            if (filters.period === "week") {
+              const weeks = getWeeksInMonth(year, filters.month);
+              navigate({ year, week: weeks[0]?.value ?? filters.week });
+            } else {
+              navigate({ year });
+            }
+          }}
+        />
+
+        {/* ── Mois (Mois ou Semaine) ── */}
+        {(filters.period === "month" || filters.period === "week") && (
+          <SelectFilter
+            label="Mois"
+            value={String(filters.month)}
+            options={MONTH_OPTIONS}
+            onChange={(v) => {
+              const month = Number(v);
+              if (filters.period === "week") {
+                const weeks = getWeeksInMonth(filters.year, month);
+                navigate({ month, week: weeks[0]?.value ?? filters.week });
+              } else {
+                navigate({ month });
+              }
+            }}
+          />
+        )}
+
+        {/* ── Semaine (dans le mois sélectionné) ── */}
+        {filters.period === "week" && (
+          <SelectFilter
+            label="Semaine"
+            value={filters.week}
+            options={getWeeksInMonth(filters.year, filters.month)}
+            onChange={(v) => navigate({ week: v })}
+          />
+        )}
+
+        {/* ── Trimestre ── */}
+        {filters.period === "quarter" && (
+          <SelectFilter
+            label="Trimestre"
+            value={String(filters.quarter)}
+            options={QUARTER_OPTIONS}
+            onChange={(v) => navigate({ quarter: Number(v) })}
+          />
+        )}
 
         {/* ── Filtres Admin ── */}
         {role === "ADMIN" && filterOptions.departments.length > 0 && (
@@ -267,6 +382,10 @@ export function DashboardFilters({
           </div>
         )}
       </div>
+
+      {periodLabel && (
+        <p className="mt-2 text-xs font-medium text-facamBlue">→ {periodLabel}</p>
+      )}
     </div>
   );
 }

@@ -149,60 +149,85 @@ function getPeriodRange(period: DashboardPeriod): PeriodRange {
   };
 }
 
-function getPrevPeriodRange(period: DashboardPeriod): PeriodRange {
-  const now = new Date();
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth();
-  const d = now.getUTCDate();
+// ─── Période ancrée (sélectionnée par l'utilisateur, pas "aujourd'hui") ─────
+
+export type PeriodSelection = {
+  period: DashboardPeriod;
+  year: number;
+  month?: number; // 1-12 — utilisé si period === "month" | "week"
+  quarter?: number; // 1-4 — utilisé si period === "quarter"
+  week?: string; // date ISO du lundi — utilisée si period === "week"
+};
+
+function parseIsoDateUtc(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function getPeriodRangeForSelection(sel: PeriodSelection): PeriodRange {
+  const { period, year } = sel;
 
   if (period === "week") {
-    const dow = now.getUTCDay();
-    const toMon = dow === 0 ? -6 : 1 - dow;
-    const prevMonday = new Date(Date.UTC(y, m, d + toMon - 7));
-    const prevFriday = new Date(Date.UTC(y, m, d + toMon - 3));
-    const prevSaturday = new Date(Date.UTC(y, m, d + toMon - 2));
-    return {
-      startDate: prevMonday,
-      endDate: prevFriday,
-      endExclusiveDate: prevSaturday,
-      workingDays: 5,
-      label: "Semaine précédente",
-    };
+    const monday = parseIsoDateUtc(sel.week!);
+    const friday = new Date(monday.getTime() + 4 * 24 * 60 * 60 * 1000);
+    const saturday = new Date(monday.getTime() + 5 * 24 * 60 * 60 * 1000);
+    const label = `Semaine du ${monday.toLocaleDateString("fr-FR", { day: "2-digit", month: "long" })} au ${friday.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}`;
+    return { startDate: monday, endDate: friday, endExclusiveDate: saturday, workingDays: 5, label };
   }
 
   if (period === "month") {
-    const start = new Date(Date.UTC(y, m - 1, 1));
-    const end = new Date(Date.UTC(y, m, 0));
-    const endExclusive = new Date(Date.UTC(y, m, 1));
-    return {
-      startDate: start,
-      endDate: end,
-      endExclusiveDate: endExclusive,
-      workingDays: 21,
-      label: "Mois précédent",
-    };
+    const month = sel.month!;
+    const start = new Date(Date.UTC(year, month - 1, 1));
+    const end = new Date(Date.UTC(year, month, 0));
+    const endExclusive = new Date(Date.UTC(year, month, 1));
+    const raw = start.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    const label = raw.charAt(0).toUpperCase() + raw.slice(1);
+    return { startDate: start, endDate: end, endExclusiveDate: endExclusive, workingDays: 21, label };
   }
 
   if (period === "year") {
     return {
-      startDate: new Date(Date.UTC(y - 1, 0, 1)),
-      endDate: new Date(Date.UTC(y - 1, 11, 31)),
-      endExclusiveDate: new Date(Date.UTC(y, 0, 1)),
+      startDate: new Date(Date.UTC(year, 0, 1)),
+      endDate: new Date(Date.UTC(year, 11, 31)),
+      endExclusiveDate: new Date(Date.UTC(year + 1, 0, 1)),
       workingDays: 252,
-      label: String(y - 1),
+      label: String(year),
     };
   }
 
-  const q = Math.floor(m / 3);
-  const prevQ = q === 0 ? 3 : q - 1;
-  const prevQYear = q === 0 ? y - 1 : y;
-  return {
-    startDate: new Date(Date.UTC(prevQYear, prevQ * 3, 1)),
-    endDate: new Date(Date.UTC(prevQYear, prevQ * 3 + 3, 0)),
-    endExclusiveDate: new Date(Date.UTC(prevQYear, prevQ * 3 + 3, 1)),
-    workingDays: 63,
-    label: `T${prevQ + 1} ${prevQYear}`,
-  };
+  const q = sel.quarter!;
+  const qStart = new Date(Date.UTC(year, (q - 1) * 3, 1));
+  const qEnd = new Date(Date.UTC(year, q * 3, 0));
+  const qEndExclusive = new Date(Date.UTC(year, q * 3, 1));
+  return { startDate: qStart, endDate: qEnd, endExclusiveDate: qEndExclusive, workingDays: 63, label: `T${q} ${year}` };
+}
+
+function getPrevPeriodRangeForSelection(sel: PeriodSelection): PeriodRange {
+  if (sel.period === "week") {
+    const monday = parseIsoDateUtc(sel.week!);
+    const prevMonday = new Date(monday.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return getPeriodRangeForSelection({ ...sel, week: toIsoDate(prevMonday) });
+  }
+
+  if (sel.period === "month") {
+    const month = sel.month!;
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? sel.year - 1 : sel.year;
+    return getPeriodRangeForSelection({ ...sel, year: prevYear, month: prevMonth });
+  }
+
+  if (sel.period === "year") {
+    return getPeriodRangeForSelection({ ...sel, year: sel.year - 1 });
+  }
+
+  const q = sel.quarter!;
+  const prevQuarter = q === 1 ? 4 : q - 1;
+  const prevYear = q === 1 ? sel.year - 1 : sel.year;
+  return getPeriodRangeForSelection({ ...sel, year: prevYear, quarter: prevQuarter });
 }
 
 function formatIsoDate(date: Date | null): string | null {
@@ -238,9 +263,12 @@ function getNextWeekMonday(): Date {
   return new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000);
 }
 
-function todayDayEnum(): string {
+// Le Week Planner ne couvre que Lundi-Vendredi (enum PlannedDay) — null le week-end.
+function todayDayEnum(): "MON" | "TUE" | "WED" | "THU" | "FRI" | null {
   const dow = new Date().getUTCDay();
-  return ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][dow];
+  const weekdays = ["MON", "TUE", "WED", "THU", "FRI"] as const;
+  if (dow === 0 || dow === 6) return null;
+  return weekdays[dow - 1];
 }
 
 function getWeekPlannerScope(
@@ -1062,7 +1090,7 @@ async function getManagerTodayView(
         select: {
           status: true,
           tasks: {
-            where: { plannedDay: todayDay as "MON" | "TUE" | "WED" | "THU" | "FRI" },
+            where: { plannedDay: { in: todayDay ? [todayDay] : [] } },
             select: { status: true },
           },
         },
@@ -1108,7 +1136,7 @@ async function getCollaboratorTodayData(userId: string): Promise<CollaboratorTod
       select: {
         status: true,
         tasks: {
-          where: { plannedDay: todayDay as "MON" | "TUE" | "WED" | "THU" | "FRI" },
+          where: { plannedDay: { in: todayDay ? [todayDay] : [] } },
           select: {
             id: true,
             title: true,
@@ -1167,10 +1195,9 @@ async function getTaskDoneRate(
 async function getAdminDashboardData(
   ctx: DashboardContext,
   range: PeriodRange,
-  period: DashboardPeriod,
+  prevRange: PeriodRange,
   filters: Partial<ActiveFilters>,
 ): Promise<DashboardData> {
-  const prevRange = getPrevPeriodRange(period);
 
   const [
     taskGroups,
@@ -1250,17 +1277,16 @@ async function getAdminDashboardData(
     budgetRiskData,
     committeeRows,
     upcomingMilestones,
+    periodLabel: range.label,
   };
 }
 
 async function getManagerDashboardData(
   ctx: DashboardContext,
   range: PeriodRange,
-  period: DashboardPeriod,
+  prevRange: PeriodRange,
   filters: Partial<ActiveFilters>,
 ): Promise<DashboardData> {
-  const prevRange = getPrevPeriodRange(period);
-
   const [
     taskGroups,
     projectRows,
@@ -1323,6 +1349,7 @@ async function getManagerDashboardData(
     alerts,
     upcomingMilestones,
     todayTeamView,
+    periodLabel: range.label,
   };
 }
 
@@ -1384,6 +1411,7 @@ async function getCollaboratorDashboardData(
     tableRows,
     alerts,
     collaboratorToday,
+    periodLabel: range.label,
   };
 }
 
@@ -1391,7 +1419,7 @@ export async function getDashboardData(params: {
   role: Role;
   userId: string;
   departmentId: string | null;
-  period: DashboardPeriod;
+  selection: PeriodSelection;
   filters?: Partial<ActiveFilters>;
 }): Promise<DashboardData> {
   const ctx: DashboardContext = {
@@ -1399,11 +1427,12 @@ export async function getDashboardData(params: {
     userId: params.userId,
     departmentId: params.departmentId,
   };
-  const range = getPeriodRange(params.period);
+  const range = getPeriodRangeForSelection(params.selection);
+  const prevRange = getPrevPeriodRangeForSelection(params.selection);
   const filters = params.filters ?? {};
 
-  if (ctx.role === "ADMIN") return getAdminDashboardData(ctx, range, params.period, filters);
-  if (ctx.role === "MANAGER") return getManagerDashboardData(ctx, range, params.period, filters);
+  if (ctx.role === "ADMIN") return getAdminDashboardData(ctx, range, prevRange, filters);
+  if (ctx.role === "MANAGER") return getManagerDashboardData(ctx, range, prevRange, filters);
   return getCollaboratorDashboardData(ctx, range, filters);
 }
 
