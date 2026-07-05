@@ -9,9 +9,10 @@ type Props = {
   navItems: NavItem[];
   userName: string;
   roleLabel: string;
+  actionsToProcessCount?: number;
 };
 
-export function MobileNav({ navItems, userName, roleLabel }: Props) {
+export function MobileNav({ navItems, userName, roleLabel, actionsToProcessCount = 0 }: Readonly<Props>) {
   const [isOpen, setIsOpen] = useState(false);
 
   const close = useCallback(() => setIsOpen(false), []);
@@ -79,7 +80,7 @@ export function MobileNav({ navItems, userName, roleLabel }: Props) {
 
         {/* Navigation — close drawer on link click */}
         <nav className="flex-1 overflow-y-auto py-4" onClick={close}>
-          <SidebarNav items={navItems} />
+          <SidebarNav items={navItems} actionsToProcessCount={actionsToProcessCount} />
         </nav>
 
         {/* User info */}

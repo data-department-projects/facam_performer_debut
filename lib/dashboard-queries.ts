@@ -48,7 +48,7 @@ type PeriodRange = {
   label: string;
 };
 
-type DashboardContext = {
+export type DashboardContext = {
   role: Role;
   userId: string;
   departmentId: string | null;
@@ -445,7 +445,7 @@ async function getTaskStatusGroups(
   return statuses.map((status, i) => ({ status, _count: { _all: counts[i] } }));
 }
 
-async function countActionsToProcess(ctx: DashboardContext): Promise<number> {
+export async function countActionsToProcess(ctx: DashboardContext): Promise<number> {
   const today = getTodayUtc();
 
   if (ctx.role === "ADMIN") {
@@ -511,29 +511,71 @@ async function getObjectiveCompletionRate(userId: string, range: PeriodRange): P
   return percentage(done, total);
 }
 
-async function getAdminProjectRows(): Promise<AdminProjectRow[]> {
+function getActiveProjectWhereForAdminTable(filters?: Partial<ActiveFilters>): Prisma.ProjectWhereInput {
+  const statusFilter: Prisma.ProjectWhereInput =
+    filters?.projectStatus && filters.projectStatus !== "ALL"
+      ? { currentStatus: filters.projectStatus as ProjectStatus }
+      : { currentStatus: { in: ACTIVE_PROJECT_STATUSES } };
+
+  const priorityFilter: Prisma.ProjectWhereInput =
+    filters?.strategicPriority && filters.strategicPriority !== "ALL"
+      ? { strategicPriority: filters.strategicPriority as never }
+      : {};
+
+  const deptFilter: Prisma.ProjectWhereInput = filters?.departmentId
+    ? {
+        OR: [
+          { beneficiaryDepartmentId: filters.departmentId },
+          { teamMembers: { some: { user: { departmentId: filters.departmentId } } } },
+          { projectManager: { departmentId: filters.departmentId } },
+        ],
+      }
+    : {};
+
+  return { ...statusFilter, ...priorityFilter, ...deptFilter };
+}
+
+async function getAdminActiveProjectsTable(
+  filters?: Partial<ActiveFilters>,
+): Promise<{ rows: AdminProjectRow[]; totalPlannedBudget: number }> {
   const projects = await prisma.project.findMany({
-    where: { isConfirmed: false },
+    where: getActiveProjectWhereForAdminTable(filters),
     select: {
       id: true,
       code: true,
       name: true,
-      createdAt: true,
-      strategicPriority: true,
+      initialBudget: true,
       projectManager: { select: { fullName: true } },
+      expenses: { select: { amount: true } },
+      ganttTasks: { select: { progressPercent: true } },
     },
-    orderBy: { createdAt: "asc" },
-    take: 8,
+    orderBy: { createdAt: "desc" },
   });
 
-  return projects.map((p) => ({
-    id: p.id,
-    code: p.code,
-    name: p.name,
-    managerName: p.projectManager.fullName,
-    createdAt: formatIsoDate(p.createdAt) ?? "",
-    strategicPriority: p.strategicPriority,
-  }));
+  const rows = projects.map((p) => {
+    const totalExpenses = p.expenses.reduce((s, e) => s + Number(e.amount), 0);
+    const initialBudget = Number(p.initialBudget);
+    const budgetConsumedPercent = initialBudget > 0 ? Math.round((totalExpenses / initialBudget) * 100) : 0;
+    const progressPercent =
+      p.ganttTasks.length > 0
+        ? Math.round(p.ganttTasks.reduce((s, t) => s + t.progressPercent, 0) / p.ganttTasks.length)
+        : 0;
+
+    return {
+      id: p.id,
+      code: p.code,
+      name: p.name,
+      managerName: p.projectManager.fullName,
+      initialBudget,
+      totalExpenses,
+      budgetConsumedPercent,
+      progressPercent,
+    };
+  });
+
+  const totalPlannedBudget = rows.reduce((s, r) => s + r.initialBudget, 0);
+
+  return { rows, totalPlannedBudget };
 }
 
 async function getManagerTeamRows(
@@ -632,6 +674,16 @@ async function getNextMeetingLabel(userId: string): Promise<string> {
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
+function getKeyResultActivityScope(ctx: DashboardContext): Prisma.KeyResultWhereInput {
+  if (ctx.role === "ADMIN") return {};
+  if (ctx.role === "MANAGER") {
+    return ctx.departmentId
+      ? { objective: { user: { departmentId: ctx.departmentId } } }
+      : { id: "__no_department__" };
+  }
+  return { objective: { userId: ctx.userId } };
+}
+
 async function getRecentActivity(
   ctx: DashboardContext,
   range: PeriodRange,
@@ -640,14 +692,7 @@ async function getRecentActivity(
   const projectWhere = getConfirmedActiveProjectWhere(ctx, filters);
   const weekPlannerScope = getWeekPlannerScope(ctx, filters);
   const committeeScope = getCommitteeActionScope(ctx, filters);
-  const keyResultScope: Prisma.KeyResultWhereInput =
-    ctx.role === "ADMIN"
-      ? {}
-      : ctx.role === "MANAGER"
-        ? ctx.departmentId
-          ? { objective: { user: { departmentId: ctx.departmentId } } }
-          : { id: "__no_department__" }
-        : { objective: { userId: ctx.userId } };
+  const keyResultScope = getKeyResultActivityScope(ctx);
 
   const [projects, planners, actions, keyResults] = await Promise.all([
     prisma.project.findMany({
@@ -725,6 +770,60 @@ async function getRecentActivity(
       description: `Résultat clé « ${kr.description} » mis à jour`,
       actor: kr.objective.user.fullName,
       timestamp: kr.updatedAt.toISOString(),
+    })),
+  ];
+
+  return activity
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 5);
+}
+
+/** Activité récente scopée aux actions des Administrateurs sur les projets (création, confirmation). */
+async function getRecentAdminActivity(range: PeriodRange): Promise<ActivityItem[]> {
+  const [created, confirmed] = await Promise.all([
+    prisma.project.findMany({
+      where: {
+        createdAt: { gte: range.startDate, lt: range.endExclusiveDate },
+        createdBy: { role: "ADMIN" },
+      },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        createdBy: { select: { fullName: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+    prisma.project.findMany({
+      where: {
+        confirmedAt: { gte: range.startDate, lt: range.endExclusiveDate },
+      },
+      select: {
+        id: true,
+        name: true,
+        confirmedAt: true,
+        confirmedBy: { select: { fullName: true } },
+      },
+      orderBy: { confirmedAt: "desc" },
+      take: 5,
+    }),
+  ]);
+
+  const activity: ActivityItem[] = [
+    ...created.map((p) => ({
+      id: `project-created-${p.id}`,
+      type: "project" as const,
+      description: `Projet « ${p.name} » créé`,
+      actor: p.createdBy.fullName,
+      timestamp: p.createdAt.toISOString(),
+    })),
+    ...confirmed.map((p) => ({
+      id: `project-confirmed-${p.id}`,
+      type: "project" as const,
+      description: `Projet « ${p.name} » confirmé`,
+      actor: p.confirmedBy?.fullName ?? "—",
+      timestamp: p.confirmedAt!.toISOString(),
     })),
   ];
 
@@ -883,14 +982,18 @@ async function fetchManagerPlannerAlerts(ctx: DashboardContext): Promise<AlertIt
   }];
 }
 
-async function fetchExpiredKeyResultAlerts(ctx: DashboardContext, today: Date): Promise<AlertItem[]> {
-  const krScope: Prisma.KeyResultWhereInput =
-    ctx.role === "ADMIN" ? {} :
-    ctx.role === "MANAGER" && ctx.departmentId
+function getExpiredKeyResultScope(ctx: DashboardContext): Prisma.KeyResultWhereInput {
+  if (ctx.role === "ADMIN") return {};
+  if (ctx.role === "MANAGER") {
+    return ctx.departmentId
       ? { objective: { user: { departmentId: ctx.departmentId } } }
-      : ctx.role === "MANAGER"
-        ? {}
-        : { objective: { userId: ctx.userId } };
+      : {};
+  }
+  return { objective: { userId: ctx.userId } };
+}
+
+async function fetchExpiredKeyResultAlerts(ctx: DashboardContext, today: Date): Promise<AlertItem[]> {
+  const krScope = getExpiredKeyResultScope(ctx);
 
   const count = await prisma.keyResult.count({
     where: { ...krScope, status: { not: "DONE" }, dueDate: { lt: today } },
@@ -1203,8 +1306,7 @@ async function getAdminDashboardData(
     taskGroups,
     projectRows,
     committeeRate,
-    actionsToProcess,
-    tableRows,
+    activeProjectsTable,
     recentActivity,
     alerts,
     budgetRiskData,
@@ -1216,9 +1318,8 @@ async function getAdminDashboardData(
     getTaskStatusGroups(ctx, range, filters),
     getProjectProgressRows(ctx, filters),
     getCommitteeCompletionRate(ctx, range, filters),
-    countActionsToProcess(ctx),
-    getAdminProjectRows(),
-    getRecentActivity(ctx, range, filters),
+    getAdminActiveProjectsTable(filters),
+    getRecentAdminActivity(range),
     getSmartAlerts(ctx, filters),
     getAdminBudgetRiskData(),
     getAdminCommitteeRows(),
@@ -1226,6 +1327,7 @@ async function getAdminDashboardData(
     getTaskDoneRate(ctx, prevRange, filters),
     getCommitteeCompletionRate(ctx, prevRange, filters),
   ]);
+  const { rows: tableRows, totalPlannedBudget } = activeProjectsTable;
 
   const taskTotal = taskGroups.reduce((s, g) => s + g._count._all, 0);
   const taskDone = taskGroups.find((g) => g.status === "DONE")?._count._all ?? 0;
@@ -1263,10 +1365,10 @@ async function getAdminDashboardData(
         trend: { value: committeeTrend, label: "vs période préc." },
       },
       {
-        label: "Actions à traiter",
-        value: String(actionsToProcess),
-        color: actionsToProcess > 0 ? "error" : "success",
-        sub: actionsToProcess > 0 ? "Nécessite votre attention" : "Aucune action en attente",
+        label: "Montant prévu total",
+        value: `${totalPlannedBudget.toLocaleString("fr-FR")} FCFA`,
+        color: "blue",
+        sub: `${tableRows.length} projet${tableRows.length > 1 ? "s" : ""} actif${tableRows.length > 1 ? "s" : ""}`,
       },
     ],
     barChartData: toBarChartItems(projectRows),

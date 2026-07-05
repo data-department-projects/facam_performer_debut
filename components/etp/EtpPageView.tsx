@@ -29,7 +29,7 @@ type Props = {
   periodLabel: string;
 };
 
-export function EtpPageView({ entries, teamCharges, period, periodLabel }: Props) {
+export function EtpPageView({ entries, teamCharges, period, periodLabel }: Readonly<Props>) {
   const router = useRouter();
 
   const totalHours = entries.reduce((s, e) => s + e.hoursSpent, 0);
@@ -54,8 +54,8 @@ export function EtpPageView({ entries, teamCharges, period, periodLabel }: Props
   return (
     <div className="flex flex-col gap-6">
       {/* En-tête : filtre période + export */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-2 rounded-xl border border-gray200 bg-facamWhite p-1">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2 rounded-xl border border-gray200 bg-facamWhite p-1">
           {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
             <button
               key={p}
@@ -75,7 +75,7 @@ export function EtpPageView({ entries, teamCharges, period, periodLabel }: Props
       <p className="text-xs text-gray400">{periodLabel}</p>
 
       {/* KPI bar */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
           <div key={kpi.label} className="flex flex-col gap-2 rounded-2xl border border-gray200 bg-facamWhite p-5 shadow-sm">
             <div className="flex items-center gap-2 text-gray500">

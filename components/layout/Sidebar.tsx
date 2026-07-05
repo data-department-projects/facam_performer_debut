@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { signOut } from "@/lib/auth";
 import { SidebarNav, type NavItem } from "@/components/layout/SidebarNav";
+import { ROLE_LABELS } from "@/lib/roles";
 import type { Role } from "@/app/generated/prisma/client";
 
 const ADMIN_NAV: NavItem[] = [
@@ -51,20 +52,14 @@ function getNavItems(role: Role): NavItem[] {
 type Props = {
   role: Role;
   userName: string;
+  actionsToProcessCount?: number;
 };
 
 export { getNavItems };
 
-export function Sidebar({ role, userName }: Props) {
+export function Sidebar({ role, userName, actionsToProcessCount = 0 }: Readonly<Props>) {
   const navItems = getNavItems(role);
-  const roleLabel =
-    role === "ADMIN"
-      ? "Administrateur"
-      : role === "MANAGER"
-        ? "Manager"
-        : role === "INTERN"
-          ? "Stagiaire"
-          : "Collaborateur";
+  const roleLabel = ROLE_LABELS[role];
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-[260px] flex-col bg-facamBlue lg:flex">
@@ -82,7 +77,7 @@ export function Sidebar({ role, userName }: Props) {
 
       {/* Navigation — filtrée par rôle côté serveur */}
       <nav className="flex-1 overflow-y-auto py-4">
-        <SidebarNav items={navItems} />
+        <SidebarNav items={navItems} actionsToProcessCount={actionsToProcessCount} />
       </nav>
 
       {/* Pied de sidebar : utilisateur + déconnexion */}

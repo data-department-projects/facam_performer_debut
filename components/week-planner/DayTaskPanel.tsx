@@ -25,6 +25,13 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
 type TaskExecState = { status: TaskStatus; hours: string; comment: string };
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+const SAVE_BUTTON_STYLES: Record<SaveState, string> = {
+  saved: "bg-success text-facamWhite",
+  error: "bg-error text-facamWhite",
+  saving: "bg-facamBlue text-facamWhite hover:bg-facamDark",
+  idle: "bg-facamBlue text-facamWhite hover:bg-facamDark",
+};
+
 type Props = {
   day: PlannedDay;
   tasks: WeekTask[];
@@ -149,13 +156,7 @@ export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, ass
               <button
                 onClick={() => handleSave(task)}
                 disabled={!canSave || taskSaveState === "saving"}
-                className={`self-end rounded-md px-4 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                  taskSaveState === "saved"
-                    ? "bg-success text-facamWhite"
-                    : taskSaveState === "error"
-                      ? "bg-error text-facamWhite"
-                      : "bg-facamBlue text-facamWhite hover:bg-facamDark"
-                }`}
+                className={`self-end rounded-md px-4 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${SAVE_BUTTON_STYLES[taskSaveState]}`}
               >
                 {taskSaveState === "saved" ? (
                   <span className="flex items-center gap-1"><Check size={10} />Sauvegardé</span>

@@ -30,9 +30,16 @@ export default async function CommitteeDetailPage({ params }: Props) {
   if (role === "COLLABORATOR" || role === "INTERN") {
     const isMember = dbCommittee.members.some((m) => m.userId === userId);
     if (!isMember) redirect("/committees");
+  } else {
+    const isRelated =
+      dbCommittee.createdByUserId === userId ||
+      dbCommittee.responsibleUserId === userId ||
+      dbCommittee.members.some((m) => m.userId === userId);
+    if (!isRelated) redirect("/committees");
   }
 
-  const canManage = role === "ADMIN" || (role === "MANAGER" && dbCommittee.responsibleUserId === userId);
+  const canManage =
+    dbCommittee.responsibleUserId === userId || dbCommittee.createdByUserId === userId;
 
   const committee = toMockCommittee(dbCommittee);
 

@@ -61,112 +61,114 @@ export function ProjectList({ projects }: Readonly<Props>) {
             </Link>
           </div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray200">
-                <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
-                  Code
-                </th>
-                <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
-                  Projet
-                </th>
-                <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
-                  Chef de Projet
-                </th>
-                <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
-                  Statut
-                </th>
-                <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
-                  Confirmation
-                </th>
-                <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
-                  Avancement
-                </th>
-                <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
-                  Échéance
-                </th>
-                <th className="px-6 py-3 text-right text-[10px] font-medium uppercase tracking-widest text-gray500">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((project) => (
-                <tr
-                  key={project.id}
-                  className="border-b border-gray200 last:border-0 hover:bg-gray50 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <span className="font-mono text-xs text-gray500">
-                      {project.code}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-facamBlack">
-                      {project.name}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-facamBlack">
-                      {project.projectManager}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <ProjectStatusBadge status={project.currentStatus} />
-                  </td>
-                  <td className="px-6 py-4">
-                    {project.isConfirmed ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
-                        <CheckCircle2 size={13} />
-                        Confirmé
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-warning">
-                        <Clock size={13} />
-                        En attente
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray200">
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            project.progressPercent >= 90
-                              ? "bg-error"
-                              : project.progressPercent >= 70
-                                ? "bg-facamYellow"
-                                : "bg-facamBlue"
-                          }`}
-                          style={{ width: `${project.progressPercent}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-medium text-gray500">
-                        {project.progressPercent}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-facamBlack">
-                      {new Date(project.targetEndDate).toLocaleDateString(
-                        "fr-FR",
-                        { day: "2-digit", month: "short", year: "numeric" },
-                      )}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <Link
-                      href={`/projects/${project.id}`}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-gray200 px-3 py-1.5 text-xs font-medium text-facamDark hover:border-facamBlue hover:text-facamBlue transition-colors"
-                    >
-                      <Eye size={13} />
-                      Voir
-                    </Link>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px]">
+              <thead>
+                <tr className="border-b border-gray200">
+                  <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
+                    Code
+                  </th>
+                  <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
+                    Projet
+                  </th>
+                  <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
+                    Chef de Projet
+                  </th>
+                  <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
+                    Statut
+                  </th>
+                  <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
+                    Confirmation
+                  </th>
+                  <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
+                    Avancement
+                  </th>
+                  <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">
+                    Échéance
+                  </th>
+                  <th className="px-6 py-3 text-right text-[10px] font-medium uppercase tracking-widest text-gray500">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {projects.map((project) => (
+                  <tr
+                    key={project.id}
+                    className="border-b border-gray200 last:border-0 hover:bg-gray50 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <span className="font-mono text-xs text-gray500">
+                        {project.code}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-facamBlack">
+                        {project.name}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-facamBlack">
+                        {project.projectManager}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <ProjectStatusBadge status={project.currentStatus} />
+                    </td>
+                    <td className="px-6 py-4">
+                      {project.isConfirmed ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
+                          <CheckCircle2 size={13} />
+                          Confirmé
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-warning">
+                          <Clock size={13} />
+                          En attente
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray200">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              project.progressPercent >= 90
+                                ? "bg-error"
+                                : project.progressPercent >= 70
+                                  ? "bg-facamYellow"
+                                  : "bg-facamBlue"
+                            }`}
+                            style={{ width: `${project.progressPercent}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-gray500">
+                          {project.progressPercent}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-facamBlack">
+                        {new Date(project.targetEndDate).toLocaleDateString(
+                          "fr-FR",
+                          { day: "2-digit", month: "short", year: "numeric" },
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-gray200 px-3 py-1.5 text-xs font-medium text-facamDark hover:border-facamBlue hover:text-facamBlue transition-colors"
+                      >
+                        <Eye size={13} />
+                        Voir
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

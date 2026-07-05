@@ -166,12 +166,14 @@ model Department {
   id                 String           @id @default(uuid())
   name               String
   parentDepartmentId String?
+  responsableId      String?
   color              DepartmentColor?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
   parentDepartment     Department?           @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id])
   childDepartments     Department[]          @relation("DepartmentHierarchy")
+  responsable          User?                 @relation("DepartmentResponsable", fields: [responsableId], references: [id])
   subDepartments       SubDepartment[]
   users                User[]
   committeeLinks       CommitteeDepartment[]
@@ -179,6 +181,7 @@ model Department {
   projects             Project[]             @relation("BeneficiaryDepartment")
 
   @@index([parentDepartmentId])
+  @@index([responsableId])
 }
 
 model SubDepartment {
@@ -229,27 +232,30 @@ model User {
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
-  department            Department          @relation(fields: [departmentId], references: [id])
-  team                  Team?               @relation("TeamMembers", fields: [teamId], references: [id])
-  managedTeams          Team[]              @relation("TeamManager")
-  passwordResetOtps     PasswordResetOtp[]
-  pushSubscriptions     PushSubscription[]
-  sponsoredProjects     Project[]           @relation("ProjectSponsor")
-  managedProjects       Project[]           @relation("ProjectManager")
-  confirmedProjects     Project[]           @relation("ProjectConfirmer")
-  projectMemberships    ProjectTeamMember[]
-  ganttTasks            GanttTask[]
-  managedCommittees     Committee[]
-  committeeMemberships  CommitteeMember[]
-  assignedActions       CommitteeAction[]
-  weekPlanners          WeekPlanner[]
-  validatedWeekPlanners WeekPlanner[]       @relation("WeekPlannerValidator")
-  timeEntries           TimeEntry[]
-  objectives            Objective[]
-  projectExpenses       ProjectExpense[]    @relation("ExpenseCreator")
-  bugReports            BugReport[]
-  attachments           Attachment[]
-  responsibleMilestones ProjectMilestone[]
+  department             Department          @relation(fields: [departmentId], references: [id])
+  responsibleDepartments Department[]        @relation("DepartmentResponsable")
+  team                   Team?               @relation("TeamMembers", fields: [teamId], references: [id])
+  managedTeams           Team[]              @relation("TeamManager")
+  passwordResetOtps      PasswordResetOtp[]
+  pushSubscriptions      PushSubscription[]
+  sponsoredProjects      Project[]           @relation("ProjectSponsor")
+  managedProjects        Project[]           @relation("ProjectManager")
+  createdProjects        Project[]           @relation("ProjectCreatedBy")
+  confirmedProjects      Project[]           @relation("ProjectConfirmer")
+  projectMemberships     ProjectTeamMember[]
+  ganttTasks             GanttTask[]
+  managedCommittees      Committee[]         @relation("CommitteeResponsible")
+  createdCommittees      Committee[]         @relation("CommitteeCreatedBy")
+  committeeMemberships   CommitteeMember[]
+  assignedActions        CommitteeAction[]
+  weekPlanners           WeekPlanner[]
+  validatedWeekPlanners  WeekPlanner[]       @relation("WeekPlannerValidator")
+  timeEntries            TimeEntry[]
+  objectives             Objective[]
+  projectExpenses        ProjectExpense[]    @relation("ExpenseCreator")
+  bugReports             BugReport[]
+  attachments            Attachment[]
+  responsibleMilestones  ProjectMilestone[]
 
   @@index([departmentId])
   @@index([teamId])
@@ -296,6 +302,7 @@ model Project {
   currentStatus           ProjectStatus     @default(PENDING)
   sponsorUserId           String
   projectManagerId        String
+  createdByUserId         String
   beneficiaryType         BeneficiaryType
   beneficiaryDepartmentId String?
   beneficiaryExternalName String?
@@ -318,6 +325,7 @@ model Project {
 
   sponsor               User                @relation("ProjectSponsor", fields: [sponsorUserId], references: [id])
   projectManager        User                @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  createdBy             User                @relation("ProjectCreatedBy", fields: [createdByUserId], references: [id])
   confirmedBy           User?               @relation("ProjectConfirmer", fields: [confirmedById], references: [id])
   beneficiaryDepartment Department?         @relation("BeneficiaryDepartment", fields: [beneficiaryDepartmentId], references: [id])
   teamMembers           ProjectTeamMember[]
@@ -328,6 +336,7 @@ model Project {
   committees            Committee[]
 
   @@index([projectManagerId])
+  @@index([createdByUserId])
   @@index([isConfirmed])
 }
 
@@ -409,19 +418,22 @@ model Committee {
   name              String
   description       String?
   responsibleUserId String
+  createdByUserId   String
   objectives        String
   frequency         CommitteeFrequency
   projectId         String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
-  responsible User                  @relation(fields: [responsibleUserId], references: [id])
+  responsible User                  @relation("CommitteeResponsible", fields: [responsibleUserId], references: [id])
+  createdBy   User                  @relation("CommitteeCreatedBy", fields: [createdByUserId], references: [id])
   project     Project?              @relation(fields: [projectId], references: [id])
   departments CommitteeDepartment[]
   members     CommitteeMember[]
   meetings    CommitteeMeeting[]
 
   @@index([responsibleUserId])
+  @@index([createdByUserId])
   @@index([projectId])
 }
 

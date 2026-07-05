@@ -34,8 +34,10 @@ export type AdminProjectRow = {
   code: string;
   name: string;
   managerName: string;
-  createdAt: string;
-  strategicPriority: string;
+  initialBudget: number;
+  totalExpenses: number;
+  budgetConsumedPercent: number;
+  progressPercent: number;
 };
 
 export type ManagerTeamRow = {

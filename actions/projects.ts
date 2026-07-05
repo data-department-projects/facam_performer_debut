@@ -10,7 +10,7 @@ export async function createProject(
   rawData: unknown,
 ): Promise<{ success: boolean; data?: { id: string }; error?: string }> {
   try {
-    await requireRole(["ADMIN", "MANAGER"]);
+    const currentUser = await requireRole(["ADMIN", "MANAGER"]);
 
     const parsed = projectSchema.safeParse(rawData);
     if (!parsed.success) {
@@ -38,6 +38,7 @@ export async function createProject(
           isConfirmed: false,
           sponsorUserId: input.projectManagerId,
           projectManagerId: input.projectManagerId,
+          createdByUserId: currentUser.id,
           beneficiaryType: "INTERNAL",
           beneficiaryDepartmentId: input.beneficiaryDepartmentId ?? null,
           beneficiaryExternalName: null,

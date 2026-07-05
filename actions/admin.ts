@@ -17,19 +17,42 @@ export async function createUser(
       return { success: false, error: parsed.error.issues[0].message };
     }
 
+    if (parsed.data.role === "MANAGER") {
+      const existingManager = await prisma.user.findFirst({
+        where: { departmentId: parsed.data.departmentId, role: "MANAGER", isActive: true },
+        select: { fullName: true },
+      });
+      if (existingManager) {
+        return {
+          success: false,
+          error: `${existingManager.fullName} est déjà Manager de ce département. Désactivez-le ou changez son rôle avant d'en créer un nouveau.`,
+        };
+      }
+    }
+
     const { password, teamId, ...rest } = parsed.data;
     const passwordHash = await hashPassword(password);
 
-    const user = await prisma.user.create({
-      data: {
-        ...rest,
-        passwordHash,
-        ...(teamId ? { teamId } : {}),
-      },
-      select: { id: true },
+    const user = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          ...rest,
+          passwordHash,
+          ...(teamId ? { teamId } : {}),
+        },
+        select: { id: true },
+      });
+      if (parsed.data.role === "MANAGER") {
+        await tx.department.update({
+          where: { id: parsed.data.departmentId },
+          data: { responsableId: created.id },
+        });
+      }
+      return created;
     });
 
     revalidatePath("/admin/users");
+    revalidatePath("/org-chart");
     return { success: true, userId: user.id };
   } catch (error) {
     console.error("[actions/admin] createUser", error);
@@ -56,6 +79,32 @@ export async function updateUser(
       return { success: false, error: parsed.error.issues[0].message };
     }
 
+    const currentUser = await prisma.user.findUnique({
+      where: { id },
+      select: { role: true, departmentId: true },
+    });
+    if (!currentUser) {
+      return { success: false, error: "Utilisateur introuvable." };
+    }
+
+    if (parsed.data.role === "MANAGER") {
+      const existingManager = await prisma.user.findFirst({
+        where: {
+          departmentId: parsed.data.departmentId,
+          role: "MANAGER",
+          isActive: true,
+          id: { not: id },
+        },
+        select: { fullName: true },
+      });
+      if (existingManager) {
+        return {
+          success: false,
+          error: `${existingManager.fullName} est déjà Manager de ce département. Désactivez-le ou changez son rôle avant d'en assigner un nouveau.`,
+        };
+      }
+    }
+
     const { password, teamId, ...rest } = parsed.data;
     const updateData: Record<string, unknown> = {
       ...rest,
@@ -66,8 +115,29 @@ export async function updateUser(
       updateData.passwordHash = await hashPassword(password);
     }
 
-    await prisma.user.update({ where: { id }, data: updateData });
+    const wasManager = currentUser.role === "MANAGER";
+    const isManager = parsed.data.role === "MANAGER";
+    const departmentChanged = currentUser.departmentId !== parsed.data.departmentId;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id }, data: updateData });
+
+      if (wasManager && (!isManager || departmentChanged)) {
+        await tx.department.updateMany({
+          where: { id: currentUser.departmentId, responsableId: id },
+          data: { responsableId: null },
+        });
+      }
+      if (isManager) {
+        await tx.department.update({
+          where: { id: parsed.data.departmentId },
+          data: { responsableId: id },
+        });
+      }
+    });
+
     revalidatePath("/admin/users");
+    revalidatePath("/org-chart");
     return { success: true };
   } catch (error) {
     console.error("[actions/admin] updateUser", error);
@@ -80,8 +150,15 @@ export async function deactivateUser(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await requireRole(["ADMIN"]);
-    await prisma.user.update({ where: { id }, data: { isActive: false } });
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id }, data: { isActive: false } });
+      await tx.department.updateMany({
+        where: { responsableId: id },
+        data: { responsableId: null },
+      });
+    });
     revalidatePath("/admin/users");
+    revalidatePath("/org-chart");
     return { success: true };
   } catch (error) {
     console.error("[actions/admin] deactivateUser", error);

@@ -24,7 +24,7 @@ type Props = {
   onClose: () => void;
 };
 
-export function DepartmentFormModal({ open, dept, parentDepartmentId, allDepts, onClose }: Props) {
+export function DepartmentFormModal({ open, dept, parentDepartmentId, allDepts, onClose }: Readonly<Props>) {
   const [name, setName] = useState(dept?.name ?? "");
   const [selectedParentId, setSelectedParentId] = useState<string>(
     dept?.parentDepartmentId ?? parentDepartmentId ?? "",
@@ -122,6 +122,12 @@ export function DepartmentFormModal({ open, dept, parentDepartmentId, allDepts, 
               </p>
             )}
           </div>
+
+          {/* Responsable du département — dérivé automatiquement du Manager unique de ce département */}
+          <p className="rounded-md bg-facamBlueTint px-3 py-2 text-xs text-facamDark">
+            Le responsable du département est défini automatiquement : c&apos;est l&apos;utilisateur ayant le rôle Manager
+            sur ce département. Pour le changer, modifiez le rôle depuis la page Administration.
+          </p>
 
           {/* Couleur (identification visuelle dans l'organigramme) */}
           <div className="flex flex-col gap-1.5">

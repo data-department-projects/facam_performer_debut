@@ -37,9 +37,10 @@ export type NavItem = {
 
 type Props = {
   items: NavItem[];
+  actionsToProcessCount?: number;
 };
 
-export function SidebarNav({ items }: Props) {
+export function SidebarNav({ items, actionsToProcessCount = 0 }: Readonly<Props>) {
   const pathname = usePathname();
 
   return (
@@ -49,6 +50,7 @@ export function SidebarNav({ items }: Props) {
           pathname === item.href ||
           (item.href !== "/dashboard" && pathname.startsWith(item.href));
         const Icon = ICONS[item.iconName];
+        const showBadge = item.href === "/actions-to-process" && actionsToProcessCount > 0;
 
         return (
           <li key={item.href}>
@@ -61,7 +63,12 @@ export function SidebarNav({ items }: Props) {
               }`}
             >
               {Icon && <Icon size={18} className="flex-shrink-0" />}
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {showBadge && (
+                <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-facamWhite">
+                  {actionsToProcessCount}
+                </span>
+              )}
             </Link>
           </li>
         );

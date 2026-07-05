@@ -546,7 +546,7 @@ export function ProjectForm({ users, departments, projectId, defaultValues, onSu
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center gap-2 rounded-md bg-facamBlue px-5 py-2 text-sm font-semibold text-facamWhite hover:bg-facamDark transition-colors disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-md bg-facamYellow px-5 py-2 text-sm font-semibold text-facamDark transition-colors hover:brightness-105 disabled:opacity-60"
             >
               {isSubmitting
               ? (projectId ? "Enregistrement…" : "Création en cours…")
