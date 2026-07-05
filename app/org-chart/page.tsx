@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { OrgHierarchyView, type HierarchyUser, type ManagerGroup } from "@/components/org-chart/OrgHierarchyView";
+import { OrgHierarchyView, type HierarchyUser, type DeptTreeNode } from "@/components/org-chart/OrgHierarchyView";
 import { OrgStructureDrawer } from "@/components/org-chart/OrgStructureDrawer";
 import { AppShell } from "@/components/layout/AppShell";
 import type { Role } from "@/app/generated/prisma/client";
@@ -25,6 +25,8 @@ export type OrgDeptNode = {
   id: string;
   name: string;
   parentDepartmentId: string | null;
+  responsableId: string | null;
+  responsableName: string | null;
   color: DepartmentColorValue | null;
   users: OrgUser[];
   subDepartments: OrgSubDept[];
@@ -75,6 +77,7 @@ function resolveColor(deptId: string, depts: Map<string, FlatDept>): DepartmentC
 // ── Requête Prisma (drawer admin) ─────────────────────────────────────────────
 
 const deptInclude = {
+  responsable: { select: { id: true, fullName: true, email: true, role: true } },
   users: {
     where: { isActive: true },
     select: { id: true, fullName: true, email: true, role: true },
@@ -107,7 +110,7 @@ export default async function OrgChartPage() {
   const role = session.user.role as Role;
   const isAdmin = role === "ADMIN";
 
-  const [rawDepts, activeUsers, teams] = await Promise.all([
+  const [rawDepts, activeUsers] = await Promise.all([
     prisma.department.findMany({
       include: deptInclude,
       orderBy: { name: "asc" },
@@ -116,15 +119,6 @@ export default async function OrgChartPage() {
       where: { isActive: true },
       select: { id: true, fullName: true, email: true, role: true, departmentId: true },
       orderBy: { fullName: "asc" },
-    }),
-    prisma.team.findMany({
-      select: {
-        managerId: true,
-        members: {
-          where: { isActive: true },
-          select: { id: true, fullName: true, email: true, role: true, departmentId: true },
-        },
-      },
     }),
   ]);
 
@@ -135,6 +129,8 @@ export default async function OrgChartPage() {
       id: d.id,
       name: d.name,
       parentDepartmentId: d.parentDepartmentId,
+      responsableId: d.responsableId,
+      responsableName: d.responsable?.fullName ?? null,
       color: d.color,
       users: d.users,
       subDepartments: d.subDepartments.map((sd) => ({
@@ -158,10 +154,12 @@ export default async function OrgChartPage() {
     id: d.id,
     name: d.name,
     parentDepartmentId: d.parentDepartmentId,
+    responsableId: d.responsableId,
     color: d.color,
   }));
 
   // ── Données pour la vue hiérarchique (contenu principal) ─────────────────
+  // Département → sous-département (département enfant) → responsable → collaborateurs directs
 
   const flatDepts = new Map<string, FlatDept>(
     rawDepts.map((d) => [d.id, { id: d.id, name: d.name, parentDepartmentId: d.parentDepartmentId, color: d.color }]),
@@ -179,44 +177,44 @@ export default async function OrgChartPage() {
     };
   }
 
-  const admins = activeUsers.filter((u) => u.role === "ADMIN").map(toHierarchyUser);
-  const managers = activeUsers.filter((u) => u.role === "MANAGER");
+  function buildHierarchyTree(): DeptTreeNode[] {
+    const map = new Map<string, DeptTreeNode>();
+    for (const d of rawDepts) {
+      map.set(d.id, {
+        id: d.id,
+        name: d.name,
+        color: d.color,
+        responsable: d.responsable
+          ? toHierarchyUser({ ...d.responsable, departmentId: d.id })
+          : null,
+        directUsers: d.users
+          .filter((u) => u.id !== d.responsableId)
+          .map((u) => toHierarchyUser({ ...u, departmentId: d.id })),
+        children: [],
+      });
+    }
 
-  const reportsByManagerId = new Map<string, HierarchyUser[]>();
-  const assignedIds = new Set<string>();
+    const roots: DeptTreeNode[] = [];
+    for (const d of rawDepts) {
+      const node = map.get(d.id)!;
+      if (d.parentDepartmentId) {
+        map.get(d.parentDepartmentId)?.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
 
-  // 1) Rattachement explicite via Équipe (Team.manager → Team.members)
-  for (const team of teams) {
-    if (!team.managerId) continue;
-    const reports = team.members.filter((m) => m.id !== team.managerId).map(toHierarchyUser);
-    const existing = reportsByManagerId.get(team.managerId) ?? [];
-    reportsByManagerId.set(team.managerId, [...existing, ...reports]);
-    reports.forEach((r) => assignedIds.add(r.id));
+    function sortNode(node: DeptTreeNode) {
+      node.children.sort((a, b) => a.name.localeCompare(b.name, "fr"));
+      node.children.forEach(sortNode);
+    }
+    roots.sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    roots.forEach(sortNode);
+
+    return roots;
   }
 
-  // 2) Repli : rattachement direct au manager du même département quand aucune Équipe n'existe
-  const firstManagerIdByDept = new Map<string, string>();
-  for (const m of managers) {
-    if (!firstManagerIdByDept.has(m.departmentId)) firstManagerIdByDept.set(m.departmentId, m.id);
-  }
-  for (const u of activeUsers) {
-    if (u.role !== "COLLABORATOR" && u.role !== "INTERN") continue;
-    if (assignedIds.has(u.id)) continue;
-    const managerId = firstManagerIdByDept.get(u.departmentId);
-    if (!managerId) continue;
-    const existing = reportsByManagerId.get(managerId) ?? [];
-    reportsByManagerId.set(managerId, [...existing, toHierarchyUser(u)]);
-    assignedIds.add(u.id);
-  }
-
-  const managerGroups: ManagerGroup[] = managers.map((m) => ({
-    manager: toHierarchyUser(m),
-    reports: reportsByManagerId.get(m.id) ?? [],
-  }));
-
-  const unassigned = activeUsers
-    .filter((u) => (u.role === "COLLABORATOR" || u.role === "INTERN") && !assignedIds.has(u.id))
-    .map(toHierarchyUser);
+  const hierarchyTree = buildHierarchyTree();
 
   const legend = rawDepts
     .filter((d) => d.color)
@@ -240,13 +238,7 @@ export default async function OrgChartPage() {
         </div>
 
         {/* Vue hiérarchique */}
-        <OrgHierarchyView
-          admins={admins}
-          managerGroups={managerGroups}
-          unassigned={unassigned}
-          legend={legend}
-          totalHeadcount={activeUsers.length}
-        />
+        <OrgHierarchyView deptTree={hierarchyTree} legend={legend} />
       </div>
     </AppShell>
   );

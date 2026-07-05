@@ -5,6 +5,8 @@ import { Sidebar, getNavItems } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { TopBar } from "@/components/layout/TopBar";
 import { NotificationPermissionPrompt } from "@/components/notifications/NotificationPermissionPrompt";
+import { countActionsToProcess } from "@/lib/dashboard-queries";
+import { ROLE_LABELS } from "@/lib/roles";
 import type { Role } from "@/app/generated/prisma/client";
 
 type Props = {
@@ -13,7 +15,7 @@ type Props = {
   requireAdmin?: boolean;
 };
 
-export async function AppShell({ children, pageTitle, requireAdmin = false }: Props) {
+export async function AppShell({ children, pageTitle, requireAdmin = false }: Readonly<Props>) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
@@ -21,31 +23,38 @@ export async function AppShell({ children, pageTitle, requireAdmin = false }: Pr
 
   if (requireAdmin && role !== "ADMIN") redirect("/dashboard");
 
-  const roleLabel =
-    role === "ADMIN"
-      ? "Administrateur"
-      : role === "MANAGER"
-        ? "Manager"
-        : role === "INTERN"
-          ? "Stagiaire"
-          : "Collaborateur";
+  const roleLabel = ROLE_LABELS[role as Role];
 
   const userRecord = await prisma.user.findUnique({
     where: { id: userId },
-    select: { notificationConsent: true },
+    select: { notificationConsent: true, departmentId: true },
   });
 
   const showNotificationPrompt = userRecord?.notificationConsent === "NOT_ASKED";
   const navItems = getNavItems(role as Role);
   const userName = name ?? "Utilisateur";
 
+  const actionsToProcessCount =
+    role === "ADMIN" || role === "MANAGER"
+      ? await countActionsToProcess({
+          role: role as Role,
+          userId,
+          departmentId: userRecord?.departmentId ?? null,
+        })
+      : 0;
+
   return (
     <div className="flex min-h-screen overflow-x-hidden bg-facamBlueTint">
       {/* Desktop sidebar */}
-      <Sidebar role={role as Role} userName={userName} />
+      <Sidebar role={role as Role} userName={userName} actionsToProcessCount={actionsToProcessCount} />
 
       {/* Mobile drawer + hamburger button */}
-      <MobileNav navItems={navItems} userName={userName} roleLabel={roleLabel} />
+      <MobileNav
+        navItems={navItems}
+        userName={userName}
+        roleLabel={roleLabel}
+        actionsToProcessCount={actionsToProcessCount}
+      />
 
       {/* Main content */}
       <div className="flex flex-1 flex-col lg:ml-[260px]">

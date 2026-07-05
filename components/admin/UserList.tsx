@@ -51,7 +51,7 @@ function activeBadge(isActive: boolean) {
   );
 }
 
-export function UserList({ users, departments }: Props) {
+export function UserList({ users, departments }: Readonly<Props>) {
   const [filterDeptId, setFilterDeptId] = useState("");
   const [filterRole, setFilterRole] = useState("");
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("active");
@@ -82,56 +82,58 @@ export function UserList({ users, departments }: Props) {
             Aucun utilisateur ne correspond aux filtres sélectionnés.
           </div>
         ) : (
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-gray200">
-                {["Nom", "Email", "Rôle", "Département", "Statut", ""].map((h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-gray500"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((user) => (
-                <tr
-                  key={user.id}
-                  className="border-b border-gray200 last:border-0 hover:bg-gray50"
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-facamBlueMid text-xs font-semibold text-facamWhite">
-                        {user.fullName.slice(0, 2).toUpperCase()}
-                      </div>
-                      <span className="text-sm font-medium text-facamDark">
-                        {user.fullName}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray600">{user.email}</td>
-                  <td className="px-4 py-3">{roleBadge(user.role)}</td>
-                  <td className="px-4 py-3 text-sm text-gray600">
-                    {user.department.name}
-                    {user.team && (
-                      <span className="block text-xs text-gray400">{user.team.name}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">{activeBadge(user.isActive)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/admin/users/${user.id}`}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray500 hover:bg-gray100 hover:text-facamBlue"
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left">
+              <thead>
+                <tr className="border-b border-gray200">
+                  {["Nom", "Email", "Rôle", "Département", "Statut", ""].map((h) => (
+                    <th
+                      key={h}
+                      className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-gray500"
                     >
-                      <Pencil size={12} /> Modifier
-                    </Link>
-                  </td>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((user) => (
+                  <tr
+                    key={user.id}
+                    className="border-b border-gray200 last:border-0 hover:bg-gray50"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-facamBlueMid text-xs font-semibold text-facamWhite">
+                          {user.fullName.slice(0, 2).toUpperCase()}
+                        </div>
+                        <span className="text-sm font-medium text-facamDark">
+                          {user.fullName}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray600">{user.email}</td>
+                    <td className="px-4 py-3">{roleBadge(user.role)}</td>
+                    <td className="px-4 py-3 text-sm text-gray600">
+                      {user.department.name}
+                      {user.team && (
+                        <span className="block text-xs text-gray400">{user.team.name}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">{activeBadge(user.isActive)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/admin/users/${user.id}`}
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray500 hover:bg-gray100 hover:text-facamBlue"
+                      >
+                        <Pencil size={12} /> Modifier
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

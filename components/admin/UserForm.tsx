@@ -8,7 +8,29 @@ import { generateRandomPassword } from "@/lib/generate-password";
 
 type Team = { id: string; name: string; subDepartmentId: string };
 type SubDept = { id: string; name: string; teams: Team[] };
-type Department = { id: string; name: string; subDepartments: SubDept[] };
+type Department = { id: string; name: string; parentDepartmentId: string | null; subDepartments: SubDept[] };
+
+/** Départements racines suivis de leurs départements enfants (sous-départements) indentés — pour rendre la hiérarchie lisible dans le menu déroulant. */
+function sortDepartmentsHierarchically(departments: Department[]): { dept: Department; depth: number }[] {
+  const byParent = new Map<string | null, Department[]>();
+  for (const d of departments) {
+    const key = d.parentDepartmentId;
+    byParent.set(key, [...(byParent.get(key) ?? []), d]);
+  }
+  for (const list of byParent.values()) {
+    list.sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  }
+
+  const result: { dept: Department; depth: number }[] = [];
+  function walk(parentId: string | null, depth: number) {
+    for (const dept of byParent.get(parentId) ?? []) {
+      result.push({ dept, depth });
+      walk(dept.id, depth + 1);
+    }
+  }
+  walk(null, 0);
+  return result;
+}
 
 type UserData = {
   id: string;
@@ -39,7 +61,7 @@ function FieldLabel({ htmlFor, children }: { htmlFor: string; children: React.Re
   );
 }
 
-export function UserForm({ mode, departments, user }: Props) {
+export function UserForm({ mode, departments, user }: Readonly<Props>) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isSending, startSending] = useTransition();
@@ -57,6 +79,8 @@ export function UserForm({ mode, departments, user }: Props) {
   const [credentialsSent, setCredentialsSent] = useState(false);
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
   const [sendOnCreate, setSendOnCreate] = useState(true);
+
+  const sortedDepartments = useMemo(() => sortDepartmentsHierarchically(departments), [departments]);
 
   // Équipes disponibles — état dérivé, pas d'état géré
   const availableTeams = useMemo(() => {
@@ -229,9 +253,9 @@ export function UserForm({ mode, departments, user }: Props) {
               required
             >
               <option value="">Sélectionner un département…</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
+              {sortedDepartments.map(({ dept, depth }) => (
+                <option key={dept.id} value={dept.id}>
+                  {depth > 0 ? `${"  ".repeat(depth)}↳ ${dept.name}` : dept.name}
                 </option>
               ))}
             </select>

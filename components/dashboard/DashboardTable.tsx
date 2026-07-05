@@ -5,20 +5,6 @@ import type {
   DashboardData,
 } from "./types";
 
-const priorityLabel: Record<string, string> = {
-  LOW: "Faible",
-  MEDIUM: "Moyenne",
-  HIGH: "Haute",
-  CRITICAL_REGULATORY: "Critique",
-};
-
-const priorityColor: Record<string, string> = {
-  LOW: "bg-gray100 text-gray600",
-  MEDIUM: "bg-facamBlueTint text-facamBlue",
-  HIGH: "bg-[#fef9ec] text-[#92600a]",
-  CRITICAL_REGULATORY: "bg-errorLight text-error",
-};
-
 const weekStatusLabel: Record<string, string> = {
   VALIDATED: "Validée",
   SUBMITTED: "Soumise",
@@ -45,20 +31,24 @@ const krStatusColor: Record<string, string> = {
   DONE: "bg-successLight text-success",
 };
 
-function AdminTable({ rows }: { rows: AdminProjectRow[] }) {
+function fmtFcfa(value: number): string {
+  return `${value.toLocaleString("fr-FR")} FCFA`;
+}
+
+function AdminTable({ rows }: Readonly<{ rows: AdminProjectRow[] }>) {
   return (
     <div>
       <p className="mb-4 text-base font-semibold text-facamDark">
-        Projets en attente de confirmation
+        Projets actifs
       </p>
       {rows.length === 0 ? (
-        <p className="text-sm text-gray400">Aucun projet en attente.</p>
+        <p className="text-sm text-gray400">Aucun projet actif pour le moment.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-gray200">
-                {["Code", "Nom du projet", "Chef de projet", "Créé le", "Priorité"].map((h) => (
+                {["Projet", "Responsable", "Coût prévu", "Coût actuel", "Avancement"].map((h) => (
                   <th key={h} className="pb-2 pr-4 text-left text-xs font-medium uppercase tracking-wide text-gray500 last:pr-0">
                     {h}
                   </th>
@@ -68,14 +58,36 @@ function AdminTable({ rows }: { rows: AdminProjectRow[] }) {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="border-b border-gray200 hover:bg-gray50">
-                  <td className="py-3 pr-4 font-medium text-facamBlue">{row.code}</td>
-                  <td className="py-3 pr-4 font-medium text-facamBlack">{row.name}</td>
+                  <td className="py-3 pr-4">
+                    <span className="font-mono text-xs text-gray400">{row.code}</span>
+                    <p className="font-medium text-facamBlack">{row.name}</p>
+                  </td>
                   <td className="py-3 pr-4 text-gray600">{row.managerName}</td>
-                  <td className="py-3 pr-4 text-gray500">{row.createdAt}</td>
-                  <td className="py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${priorityColor[row.strategicPriority] ?? "bg-gray100 text-gray500"}`}>
-                      {priorityLabel[row.strategicPriority] ?? row.strategicPriority}
+                  <td className="py-3 pr-4 text-gray600">{fmtFcfa(row.initialBudget)}</td>
+                  <td className="py-3 pr-4">
+                    <span className="text-gray600">{fmtFcfa(row.totalExpenses)}</span>
+                    <span
+                      className={`ml-1.5 text-xs font-semibold ${
+                        row.budgetConsumedPercent > 100
+                          ? "text-error"
+                          : row.budgetConsumedPercent >= 80
+                            ? "text-warning"
+                            : "text-success"
+                      }`}
+                    >
+                      ({row.budgetConsumedPercent}%)
                     </span>
+                  </td>
+                  <td className="py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray200">
+                        <div
+                          className="h-full rounded-full bg-facamBlue"
+                          style={{ width: `${row.progressPercent}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-gray600">{row.progressPercent}%</span>
+                    </div>
                   </td>
                 </tr>
               ))}

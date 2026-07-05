@@ -17,7 +17,7 @@ function formatEtp(hours: number) {
 
 type Props = { entries: EtpEntry[] };
 
-export function EtpConsolidationTable({ entries }: Props) {
+export function EtpConsolidationTable({ entries }: Readonly<Props>) {
   const [activeTab, setActiveTab] = useState<Tab>("collaborateur");
 
   // --- Par collaborateur ---
@@ -95,7 +95,8 @@ export function EtpConsolidationTable({ entries }: Props) {
 
       {/* Tableau par collaborateur */}
       {!isEmpty && activeTab === "collaborateur" && (
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-gray200">
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray500">Collaborateur</th>
@@ -135,11 +136,13 @@ export function EtpConsolidationTable({ entries }: Props) {
             </tr>
           </tfoot>
         </table>
+        </div>
       )}
 
       {/* Tableau par département */}
       {!isEmpty && activeTab === "departement" && (
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px]">
           <thead>
             <tr className="border-b border-gray200">
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray500">Département</th>
@@ -173,11 +176,13 @@ export function EtpConsolidationTable({ entries }: Props) {
             </tr>
           </tfoot>
         </table>
+        </div>
       )}
 
       {/* Tableau par activité */}
       {!isEmpty && activeTab === "activite" && (
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px]">
           <thead>
             <tr className="border-b border-gray200">
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray500">Activité</th>
@@ -211,6 +216,7 @@ export function EtpConsolidationTable({ entries }: Props) {
             </tr>
           </tfoot>
         </table>
+        </div>
       )}
     </div>
   );

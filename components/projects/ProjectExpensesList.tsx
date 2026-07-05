@@ -35,7 +35,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 const fmt = (n: number) => n.toLocaleString("fr-FR") + " FCFA";
 
-export function ProjectExpensesList({ expenses, projectId, initialBudget, isEditable }: Props) {
+export function ProjectExpensesList({ expenses, projectId, initialBudget, isEditable }: Readonly<Props>) {
   const [showForm, setShowForm] = useState(false);
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
@@ -94,7 +94,7 @@ export function ProjectExpensesList({ expenses, projectId, initialBudget, isEdit
     <div className="flex flex-col gap-6">
       {/* Résumé budgétaire */}
       <div className="rounded-xl border border-gray200 bg-facamWhite p-5 shadow-sm">
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 gap-4 mb-4 sm:grid-cols-3">
           <div className="flex flex-col gap-0.5">
             <span className="text-xs text-gray500">Budget initial</span>
             <span className="text-sm font-semibold text-facamBlack">{fmt(initialBudget)}</span>
@@ -253,7 +253,8 @@ export function ProjectExpensesList({ expenses, projectId, initialBudget, isEdit
               <p className="text-sm text-gray400">Aucune dépense enregistrée pour ce projet.</p>
             </div>
           ) : (
-            <table className="w-full">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="border-b border-gray200">
                   <th className="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">Libellé</th>
@@ -311,6 +312,7 @@ export function ProjectExpensesList({ expenses, projectId, initialBudget, isEdit
                 </tr>
               </tfoot>
             </table>
+            </div>
           )}
         </div>
       </div>

@@ -100,49 +100,51 @@ export function PermissionsMatrix() {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-xl border border-gray200 bg-facamWhite shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-gray200">
-              <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-gray500 w-48">
-                Module
-              </th>
-              <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-gray500 text-center">
-                Administrateur
-              </th>
-              <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-gray500 text-center">
-                Manager
-              </th>
-              <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-gray500 text-center">
-                Collaborateur
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {MATRIX.map((row) => {
-              const moduleDef = MODULES.find((m) => m.key === row.module)!;
-              return (
-                <tr key={row.module} className="border-b border-gray200 last:border-0 hover:bg-gray50">
-                  <td className="px-4 py-3 text-sm font-medium text-facamDark">
-                    {moduleDef.label}
-                  </td>
-                  <PermCell level={row.admin} />
-                  <PermCell
-                    level={row.manager}
-                    enabled={config[row.module].manager}
-                  />
-                  <PermCell
-                    level={row.collaborator}
-                    enabled={
-                      row.collaborator === "conditional"
-                        ? config[row.module].collaborator
-                        : undefined
-                    }
-                  />
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-left">
+            <thead>
+              <tr className="border-b border-gray200">
+                <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-gray500 w-48">
+                  Module
+                </th>
+                <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-gray500 text-center">
+                  Administrateur
+                </th>
+                <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-gray500 text-center">
+                  Manager
+                </th>
+                <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-gray500 text-center">
+                  Collaborateur
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {MATRIX.map((row) => {
+                const moduleDef = MODULES.find((m) => m.key === row.module)!;
+                return (
+                  <tr key={row.module} className="border-b border-gray200 last:border-0 hover:bg-gray50">
+                    <td className="px-4 py-3 text-sm font-medium text-facamDark">
+                      {moduleDef.label}
+                    </td>
+                    <PermCell level={row.admin} />
+                    <PermCell
+                      level={row.manager}
+                      enabled={config[row.module].manager}
+                    />
+                    <PermCell
+                      level={row.collaborator}
+                      enabled={
+                        row.collaborator === "conditional"
+                          ? config[row.module].collaborator
+                          : undefined
+                      }
+                    />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <p className="rounded-lg border border-gray200 bg-facamBlueTint px-4 py-3 text-xs text-gray600">

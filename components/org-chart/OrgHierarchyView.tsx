@@ -15,17 +15,19 @@ export type HierarchyUser = {
   color: DepartmentColorValue | null;
 };
 
-export type ManagerGroup = {
-  manager: HierarchyUser;
-  reports: HierarchyUser[];
+/** Un département (racine ou enfant/sous-département) avec son responsable et ses collaborateurs directs. */
+export type DeptTreeNode = {
+  id: string;
+  name: string;
+  color: DepartmentColorValue | null;
+  responsable: HierarchyUser | null;
+  directUsers: HierarchyUser[];
+  children: DeptTreeNode[];
 };
 
 type Props = {
-  admins: HierarchyUser[];
-  managerGroups: ManagerGroup[];
-  unassigned: HierarchyUser[];
+  deptTree: DeptTreeNode[];
   legend: { name: string; color: DepartmentColorValue }[];
-  totalHeadcount: number;
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -44,28 +46,22 @@ function initials(name: string): string {
     : name.slice(0, 2).toUpperCase();
 }
 
-// ── Carte personne ─────────────────────────────────────────────────────────────
+// ── Carte personne (collaborateur direct) ───────────────────────────────────────
 
 function PersonCard({
   user,
-  roleOverrideLabel,
   size = "md",
-  headcount,
   onClick,
 }: Readonly<{
   user: HierarchyUser;
-  roleOverrideLabel?: string;
-  size?: "lg" | "md" | "sm";
-  headcount?: number;
+  size?: "md" | "sm";
   onClick?: () => void;
 }>) {
   const swatch = getDepartmentSwatch(user.color);
   const dims =
-    size === "lg"
-      ? { avatar: "h-14 w-14 text-base", pad: "p-4", width: "w-80", name: "text-sm" }
-      : size === "md"
-        ? { avatar: "h-11 w-11 text-sm", pad: "p-3.5", width: "w-72", name: "text-sm" }
-        : { avatar: "h-9 w-9 text-xs", pad: "p-3", width: "w-64", name: "text-xs" };
+    size === "md"
+      ? { avatar: "h-11 w-11 text-sm", pad: "p-3.5", width: "w-72", name: "text-sm" }
+      : { avatar: "h-9 w-9 text-xs", pad: "p-3", width: "w-64", name: "text-xs" };
 
   return (
     <button
@@ -81,16 +77,10 @@ function PersonCard({
       <div className="min-w-0 flex-1">
         <p className={`truncate font-semibold text-facamDark ${dims.name}`}>{user.fullName}</p>
         <p className="truncate text-[11px] text-gray500">
-          {roleOverrideLabel ?? ROLE_LABELS[user.role] ?? user.role}
+          {ROLE_LABELS[user.role] ?? user.role}
         </p>
         <p className={`truncate text-[10px] font-medium ${swatch.text}`}>{user.departmentName}</p>
       </div>
-      {typeof headcount === "number" && (
-        <div className="flex shrink-0 items-center gap-1 rounded-full bg-gray100 px-2 py-1 text-[11px] font-semibold text-gray500">
-          <Users size={11} />
-          {headcount}
-        </div>
-      )}
     </button>
   );
 }
@@ -113,7 +103,7 @@ function ConnectedRow({ children }: Readonly<{ children: React.ReactNode[] }>) {
     );
   }
   return (
-    <div className="mx-auto inline-flex gap-6 border-t-2 border-gray300 pt-6">
+    <div className="mx-auto inline-flex flex-wrap justify-center gap-6 border-t-2 border-gray300 pt-6">
       {children.map((child, i) => (
         <div key={i} className="relative flex flex-col items-center">
           <div className="absolute left-1/2 top-0 h-6 w-px -translate-x-1/2 -translate-y-6 bg-gray300" />
@@ -266,36 +256,93 @@ function PersonDetailPanel({
   );
 }
 
-// ── Groupe Manager + ses collaborateurs ────────────────────────────────────────
+// ── Carte département (nom + responsable + compteur direct) ────────────────────
 
-function ManagerGroupBlock({
-  group,
+function DeptCard({
+  node,
+  size,
   onSelectPerson,
 }: Readonly<{
-  group: ManagerGroup;
+  node: DeptTreeNode;
+  size: "lg" | "md";
   onSelectPerson: (p: SelectedPerson) => void;
 }>) {
+  const swatch = getDepartmentSwatch(node.color);
+  const dims =
+    size === "lg"
+      ? { width: "w-80", pad: "p-4", title: "text-base" }
+      : { width: "w-72", pad: "p-3.5", title: "text-sm" };
+  const count = node.directUsers.length;
+
+  return (
+    <div
+      className={`flex ${dims.width} shrink-0 flex-col gap-3 rounded-xl border-2 bg-facamWhite ${dims.pad} shadow-sm ${swatch.border}`}
+    >
+      <div className="flex items-center gap-2">
+        <Building2 size={size === "lg" ? 17 : 15} className={swatch.text} />
+        <p className={`truncate font-semibold text-facamDark ${dims.title}`}>{node.name}</p>
+      </div>
+
+      {node.responsable ? (
+        <button
+          type="button"
+          onClick={() => onSelectPerson({ user: node.responsable!, reports: node.directUsers })}
+          className="flex items-center gap-2 rounded-lg bg-gray50 p-2 text-left transition-colors hover:bg-gray100"
+        >
+          <div
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-facamWhite ${swatch.dot}`}
+          >
+            {initials(node.responsable.fullName)}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-facamDark">{node.responsable.fullName}</p>
+            <p className="text-[10px] text-gray400">Responsable</p>
+          </div>
+        </button>
+      ) : (
+        <p className="rounded-lg bg-gray50 p-2 text-xs text-gray400">Aucun responsable désigné</p>
+      )}
+
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray500">
+        <Users size={12} />
+        {count} collaborateur{count !== 1 ? "s" : ""} direct{count !== 1 ? "s" : ""}
+      </div>
+    </div>
+  );
+}
+
+// ── Nœud département récursif (carte + sous-départements + collaborateurs directs) ─
+
+function DeptNode({
+  node,
+  depth,
+  onSelectPerson,
+}: Readonly<{
+  node: DeptTreeNode;
+  depth: number;
+  onSelectPerson: (p: SelectedPerson) => void;
+}>) {
+  const children: React.ReactNode[] = [
+    ...node.directUsers.map((u) => (
+      <PersonCard
+        key={u.id}
+        user={u}
+        size="sm"
+        onClick={() => onSelectPerson({ user: u, managerName: node.responsable?.fullName })}
+      />
+    )),
+    ...node.children.map((child) => (
+      <DeptNode key={child.id} node={child} depth={depth + 1} onSelectPerson={onSelectPerson} />
+    )),
+  ];
+
   return (
     <div className="flex flex-col items-center gap-0">
-      <PersonCard
-        user={group.manager}
-        size="md"
-        headcount={group.reports.length || undefined}
-        onClick={() => onSelectPerson({ user: group.manager, reports: group.reports })}
-      />
-      {group.reports.length > 0 && (
+      <DeptCard node={node} size={depth === 0 ? "lg" : "md"} onSelectPerson={onSelectPerson} />
+      {children.length > 0 && (
         <>
-          <VerticalConnector height="h-5" />
-          <ConnectedRow>
-            {group.reports.map((r) => (
-              <PersonCard
-                key={r.id}
-                user={r}
-                size="sm"
-                onClick={() => onSelectPerson({ user: r, managerName: group.manager.fullName })}
-              />
-            ))}
-          </ConnectedRow>
+          <VerticalConnector height="h-6" />
+          <ConnectedRow>{children}</ConnectedRow>
         </>
       )}
     </div>
@@ -304,8 +351,7 @@ function ManagerGroupBlock({
 
 // ── Vue principale ──────────────────────────────────────────────────────────────
 
-export function OrgHierarchyView({ admins, managerGroups, unassigned, legend, totalHeadcount }: Readonly<Props>) {
-  const hasManagers = managerGroups.length > 0;
+export function OrgHierarchyView({ deptTree, legend }: Readonly<Props>) {
   const [selected, setSelected] = useState<SelectedPerson | null>(null);
 
   return (
@@ -313,54 +359,16 @@ export function OrgHierarchyView({ admins, managerGroups, unassigned, legend, to
       {/* Arbre hiérarchique */}
       <div className="min-w-0 flex-1 overflow-x-auto pb-4">
         <div className="flex w-fit min-w-full flex-col items-center gap-0 px-2">
-          {/* Tier 1 — Direction */}
-          {admins.length === 0 ? (
+          {deptTree.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray200 bg-facamWhite px-6 py-8 text-center">
-              <Shield size={24} className="text-gray300" />
-              <p className="text-xs text-gray400">Aucun administrateur actif.</p>
+              <Building2 size={24} className="text-gray300" />
+              <p className="text-xs text-gray400">Aucun département créé.</p>
             </div>
           ) : (
-            <div className="flex flex-wrap justify-center gap-6">
-              {admins.map((a) => (
-                <PersonCard
-                  key={a.id}
-                  user={a}
-                  roleOverrideLabel="Directeur Général"
-                  size="lg"
-                  headcount={totalHeadcount}
-                  onClick={() => setSelected({ user: a, totalHeadcount })}
-                />
+            <div className="flex flex-wrap justify-center gap-8">
+              {deptTree.map((root) => (
+                <DeptNode key={root.id} node={root} depth={0} onSelectPerson={setSelected} />
               ))}
-            </div>
-          )}
-
-          {/* Tier 2 — Managers + Tier 3 — Collaborateurs (par groupe) */}
-          {hasManagers && (
-            <>
-              <VerticalConnector height="h-7" />
-              <div className="mx-auto inline-flex items-start gap-10 border-t-2 border-gray300 pt-7">
-                {managerGroups.map((group) => (
-                  <div key={group.manager.id} className="relative">
-                    <div className="absolute left-1/2 top-0 h-7 w-px -translate-x-1/2 -translate-y-7 bg-gray300" />
-                    <ManagerGroupBlock group={group} onSelectPerson={setSelected} />
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Collaborateurs non rattachés à un manager */}
-          {unassigned.length > 0 && (
-            <div className="mt-10 flex w-full flex-col items-center gap-3 border-t border-dashed border-gray200 pt-6">
-              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-gray400">
-                <UsersRound size={13} />
-                Non rattaché·e·s à un manager
-              </div>
-              <div className="flex flex-wrap justify-center gap-3">
-                {unassigned.map((u) => (
-                  <PersonCard key={u.id} user={u} size="sm" onClick={() => setSelected({ user: u })} />
-                ))}
-              </div>
             </div>
           )}
         </div>

@@ -4,9 +4,9 @@ import { FileText, FileDown } from "lucide-react";
 
 type Props = { period: "week" | "month" | "quarter" };
 
-export function EtpExportButtons({ period }: Props) {
+export function EtpExportButtons({ period }: Readonly<Props>) {
   return (
-    <div className="flex gap-3">
+    <div className="flex flex-wrap gap-3">
       <a
         href={`/api/reports/etp?period=${period}`}
         className="flex items-center gap-2 rounded-lg border border-gray300 bg-facamWhite px-4 py-2 text-sm font-medium text-facamDark transition-colors hover:bg-gray50"
