@@ -139,6 +139,10 @@ export type CollaboratorTodayData = {
 
 export type DashboardActiveFilters = {
   period: DashboardPeriod;
+  year: number;                    // année ancrée pour mois/trimestre/année/semaine
+  month: number;                   // 1-12 — pertinent si period === "month" | "week"
+  quarter: number;                 // 1-4 — pertinent si period === "quarter"
+  week: string;                    // date ISO du lundi — pertinente si period === "week"
   departmentId: string | null;     // Admin : null = tous les départements
   projectStatus: string | null;    // Admin + Manager : null = tous les statuts
   strategicPriority: string | null; // Admin : null = toutes les priorités
@@ -172,4 +176,5 @@ export type DashboardData = {
   upcomingMilestones?: MilestoneRow[];       // Admin + Manager
   todayTeamView?: TodayTeamMemberRow[];      // Manager uniquement
   collaboratorToday?: CollaboratorTodayData; // Collaborateur uniquement
+  periodLabel?: string;                      // ex: "Semaine du 29 juin au 03 juillet 2026"
 };

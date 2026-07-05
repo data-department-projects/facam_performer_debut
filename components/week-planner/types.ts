@@ -22,6 +22,8 @@ export type WeekPlannerData = {
   tasks: WeekTask[];
 };
 
+export type TeamMemberTask = { id: string; title: string; plannedDay: PlannedDay; status: TaskStatus };
+
 export type TeamMember = {
   id: string;
   fullName: string;
@@ -30,6 +32,7 @@ export type TeamMember = {
     id: string;
     status: PlannerStatus;
     weekStartDate: string;
+    tasks?: TeamMemberTask[];
   };
 };
 

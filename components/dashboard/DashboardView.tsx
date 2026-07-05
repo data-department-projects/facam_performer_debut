@@ -247,7 +247,12 @@ export function DashboardView({
       </div>
 
       {/* ── Filtres ──────────────────────────────────────────────── */}
-      <DashboardFilters role={role} filters={filters} filterOptions={filterOptions} />
+      <DashboardFilters
+        role={role}
+        filters={filters}
+        filterOptions={filterOptions}
+        periodLabel={data.periodLabel}
+      />
 
       {/* ── KPI cards ─────────────────────────────────────────────── */}
       <StatsBar kpis={data.kpis} />

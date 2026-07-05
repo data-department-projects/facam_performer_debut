@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { validateWeekPlanner } from "@/actions/weekPlanner";
 import { CollaboratorWeekPlannerView } from "./CollaboratorWeekPlannerView";
 import { EmptyWeekView } from "./EmptyWeekView";
+import { WeekNav } from "./WeekNav";
 import type {
   TeamMember,
   PlannerStatus,
@@ -11,6 +13,11 @@ import type {
   ConfirmedProject,
   AssignedGanttTask,
 } from "./types";
+
+const DAY_LABELS: Record<string, string> = {
+  MON: "Lundi", TUE: "Mardi", WED: "Mercredi", THU: "Jeudi", FRI: "Vendredi",
+};
+const DAY_ORDER = ["MON", "TUE", "WED", "THU", "FRI"];
 
 type Tab = "planning" | "managers";
 
@@ -66,6 +73,9 @@ export function AdminWeekPlannerView({
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Navigation semaine — partagée entre les deux onglets */}
+      <WeekNav weekStartDate={weekStartDate} weekLabel={weekLabel} />
+
       {/* Onglets */}
       <div className="flex border-b border-gray200">
         {TABS.map((tab) => (
@@ -97,6 +107,7 @@ export function AdminWeekPlannerView({
             assignedGanttTasks={assignedGanttTasks}
             weekStartDate={weekStartDate}
             noValidation
+            hideWeekNav
           />
         ) : (
           <EmptyWeekView weekStartDate={weekStartDate} weekLabel={weekLabel} />
@@ -118,6 +129,7 @@ function ManagersList({
   onValidate: (id: string) => void;
 }) {
   const submittedCount = managers.filter((m) => m.weekPlanner.status === "SUBMITTED").length;
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col gap-6">
@@ -136,37 +148,86 @@ function ManagersList({
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {managers.map((manager) => (
-            <div
-              key={manager.id}
-              className="flex items-center justify-between gap-4 rounded-xl border border-gray200 bg-facamWhite px-5 py-4 shadow-sm"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-facamBlue text-xs font-semibold text-facamWhite">
-                  {manager.initials}
+          {managers.map((manager) => {
+            const hasPlanner = manager.weekPlanner.id !== "";
+            const expanded = expandedId === manager.id;
+            return (
+              <div
+                key={manager.id}
+                className="rounded-xl border border-gray200 bg-facamWhite shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-4 px-5 py-4">
+                  <button
+                    type="button"
+                    onClick={() => hasPlanner && setExpandedId(expanded ? null : manager.id)}
+                    disabled={!hasPlanner}
+                    className="flex flex-1 items-center gap-3 text-left disabled:cursor-default"
+                  >
+                    {hasPlanner ? (
+                      expanded ? (
+                        <ChevronDown size={14} className="shrink-0 text-gray400" />
+                      ) : (
+                        <ChevronRight size={14} className="shrink-0 text-gray400" />
+                      )
+                    ) : (
+                      <span className="w-3.5" />
+                    )}
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-facamBlue text-xs font-semibold text-facamWhite">
+                      {manager.initials}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-facamDark">{manager.fullName}</p>
+                      <ManagerStatusLabel status={manager.weekPlanner.status} />
+                    </div>
+                  </button>
+
+                  {manager.weekPlanner.status === "SUBMITTED" && (
+                    <button
+                      onClick={() => onValidate(manager.weekPlanner.id)}
+                      className="flex-shrink-0 rounded-md bg-facamYellow px-4 py-2 text-sm font-semibold text-facamDark hover:brightness-105"
+                    >
+                      Valider la semaine
+                    </button>
+                  )}
+
+                  {manager.weekPlanner.status === "VALIDATED" && (
+                    <span className="text-xs font-medium text-success">Validé ✓</span>
+                  )}
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-facamDark">{manager.fullName}</p>
-                  <ManagerStatusLabel status={manager.weekPlanner.status} />
-                </div>
+
+                {expanded && <WeekTaskPreview tasks={manager.weekPlanner.tasks ?? []} />}
               </div>
-
-              {manager.weekPlanner.status === "SUBMITTED" && (
-                <button
-                  onClick={() => onValidate(manager.weekPlanner.id)}
-                  className="flex-shrink-0 rounded-md bg-facamYellow px-4 py-2 text-sm font-semibold text-facamDark hover:brightness-105"
-                >
-                  Valider la semaine
-                </button>
-              )}
-
-              {manager.weekPlanner.status === "VALIDATED" && (
-                <span className="text-xs font-medium text-success">Validé ✓</span>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Aperçu en lecture seule des tâches planifiées ────────────────────────────
+
+function WeekTaskPreview({ tasks }: { tasks: NonNullable<TeamMember["weekPlanner"]["tasks"]> }) {
+  if (tasks.length === 0) {
+    return (
+      <p className="border-t border-gray100 px-5 py-3 text-xs text-gray400">
+        Aucune tâche planifiée cette semaine.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-gray100 px-5 py-3">
+      {DAY_ORDER.map((day) => {
+        const dayTasks = tasks.filter((t) => t.plannedDay === day);
+        if (dayTasks.length === 0) return null;
+        return (
+          <div key={day} className="flex gap-3 text-xs">
+            <span className="w-16 shrink-0 font-semibold text-gray500">{DAY_LABELS[day]}</span>
+            <span className="text-facamDark">{dayTasks.map((t) => t.title).join(" · ")}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
