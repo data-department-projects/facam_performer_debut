@@ -18,6 +18,15 @@ const TABS: { id: Tab; label: string; shortLabel: string }[] = [
   { id: 5, label: "Spécifications", shortLabel: "5. Spécifications" },
 ];
 
+// Champs regroupés par onglet — sert à retrouver l'onglet contenant une erreur de validation.
+const TAB_FIELDS: Record<Tab, (keyof ProjectInput)[]> = {
+  1: ["name", "description", "category", "categoryOther", "strategicPriority"],
+  2: ["projectManagerId", "beneficiaryDepartmentId", "teamMembers"],
+  3: ["estimatedStartDate", "targetEndDate", "actualStartDate", "actualEndDate"],
+  4: ["initialBudget"],
+  5: ["scopeIncluded", "scopeExcluded", "expectedDeliverables", "successCriteria", "documentationLinks"],
+};
+
 type UserOption = { id: string; fullName: string };
 type DepartmentOption = { id: string; name: string };
 
@@ -87,7 +96,7 @@ type Props = {
   onSuccess?: () => void;
 };
 
-export function ProjectForm({ users, departments, projectId, defaultValues, onSuccess }: Props) {
+export function ProjectForm({ users, departments, projectId, defaultValues, onSuccess }: Readonly<Props>) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>(1);
 
@@ -152,24 +161,42 @@ export function ProjectForm({ users, departments, projectId, defaultValues, onSu
     router.push(`/projects/${result.data!.id}`);
   };
 
+  // Si la validation échoue sur un onglet non affiché, rien ne se passe visuellement
+  // par défaut — on saute vers le premier onglet fautif et on l'explique.
+  const onInvalid = (formErrors: typeof errors) => {
+    const firstInvalidTab = TABS.find((tab) =>
+      TAB_FIELDS[tab.id].some((field) => field in formErrors),
+    );
+    if (firstInvalidTab) setActiveTab(firstInvalidTab.id);
+    setError("root", {
+      message: "Certains champs obligatoires ne sont pas remplis ou sont invalides — vérifiez les onglets marqués en rouge.",
+    });
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Onglets */}
       <div className="flex gap-1 rounded-xl border border-gray200 bg-facamWhite p-1 shadow-sm overflow-x-auto">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? "bg-facamBlue text-facamWhite shadow-sm"
-                : "text-gray500 hover:bg-gray50 hover:text-facamDark"
-            }`}
-          >
-            {tab.shortLabel}
-          </button>
-        ))}
+        {TABS.map((tab) => {
+          const hasError = TAB_FIELDS[tab.id].some((field) => field in errors);
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`relative flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? "bg-facamBlue text-facamWhite shadow-sm"
+                  : "text-gray500 hover:bg-gray50 hover:text-facamDark"
+              }`}
+            >
+              {tab.shortLabel}
+              {hasError && (
+                <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-error" />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {errors.root && (
@@ -179,7 +206,7 @@ export function ProjectForm({ users, departments, projectId, defaultValues, onSu
       )}
 
       <form
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleSubmit(onSubmit, onInvalid)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
             e.preventDefault();

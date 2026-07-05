@@ -47,7 +47,12 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
           fullName: true,
           weekPlanners: {
             where: { weekStartDate: weekStart },
-            select: { id: true, status: true, weekStartDate: true },
+            select: {
+              id: true,
+              status: true,
+              weekStartDate: true,
+              tasks: { select: { id: true, title: true, plannedDay: true, status: true } },
+            },
             take: 1,
           },
         },
@@ -101,6 +106,7 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
             id: m.weekPlanners[0].id,
             status: m.weekPlanners[0].status as "DRAFT" | "SUBMITTED" | "VALIDATED",
             weekStartDate: weekStartDate,
+            tasks: m.weekPlanners[0].tasks,
           }
         : { id: "", status: "DRAFT" as const, weekStartDate },
     }));
@@ -189,7 +195,11 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
         fullName: true,
         weekPlanners: {
           where: { weekStartDate: weekStart },
-          select: { id: true, status: true },
+          select: {
+            id: true,
+            status: true,
+            tasks: { select: { id: true, title: true, plannedDay: true, status: true } },
+          },
           take: 1,
         },
       },
@@ -205,6 +215,7 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
             id: m.weekPlanners[0].id,
             status: m.weekPlanners[0].status as "DRAFT" | "SUBMITTED" | "VALIDATED",
             weekStartDate,
+            tasks: m.weekPlanners[0].tasks,
           }
         : { id: "", status: "DRAFT" as const, weekStartDate },
     }));

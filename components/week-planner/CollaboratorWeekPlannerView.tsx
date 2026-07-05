@@ -18,6 +18,7 @@ type Props = {
   weekStartDate: string;
   validatorLabel?: string;
   noValidation?: boolean;
+  hideWeekNav?: boolean;
 };
 
 const DAYS: PlannedDay[] = ["MON", "TUE", "WED", "THU", "FRI"];
@@ -41,7 +42,8 @@ export function CollaboratorWeekPlannerView({
   weekStartDate,
   validatorLabel,
   noValidation = false,
-}: Props) {
+  hideWeekNav = false,
+}: Readonly<Props>) {
   const router = useRouter();
   const [planner, setPlanner] = useState(initialPlanner);
   const [activeDay, setActiveDay] = useState<PlannedDay>(() => {
@@ -145,25 +147,27 @@ export function CollaboratorWeekPlannerView({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between gap-4">
-        <button
-          onClick={() => handleChangeWeek(-1)}
-          className="flex items-center gap-1 rounded-md border border-gray200 bg-facamWhite px-3 py-2 text-sm text-gray500 hover:bg-gray50"
-        >
-          <ChevronLeft size={14} />
-          Semaine précédente
-        </button>
+      {!hideWeekNav && (
+        <div className="flex items-center justify-between gap-4">
+          <button
+            onClick={() => handleChangeWeek(-1)}
+            className="flex items-center gap-1 rounded-md border border-gray200 bg-facamWhite px-3 py-2 text-sm text-gray500 hover:bg-gray50"
+          >
+            <ChevronLeft size={14} />
+            Semaine précédente
+          </button>
 
-        <span className="text-sm font-medium text-facamDark">Semaine du {weekLabel}</span>
+          <span className="text-sm font-medium text-facamDark">Semaine du {weekLabel}</span>
 
-        <button
-          onClick={() => handleChangeWeek(1)}
-          className="flex items-center gap-1 rounded-md border border-gray200 bg-facamWhite px-3 py-2 text-sm text-gray500 hover:bg-gray50"
-        >
-          Semaine suivante
-          <ChevronRight size={14} />
-        </button>
-      </div>
+          <button
+            onClick={() => handleChangeWeek(1)}
+            className="flex items-center gap-1 rounded-md border border-gray200 bg-facamWhite px-3 py-2 text-sm text-gray500 hover:bg-gray50"
+          >
+            Semaine suivante
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
 
       <WeekStatusBanner
         status={planner.status}

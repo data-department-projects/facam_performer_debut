@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CollaboratorWeekPlannerView } from "./CollaboratorWeekPlannerView";
 import { ManagerWeekPlannerView } from "./ManagerWeekPlannerView";
 import { EmptyWeekView } from "./EmptyWeekView";
+import { WeekNav } from "./WeekNav";
 import type { WeekPlannerData, ConfirmedProject, AssignedGanttTask, TeamMember } from "./types";
 
 type Props = {
@@ -22,11 +23,14 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "team", label: "Mon Équipe" },
 ];
 
-export function ManagerWeekPlannerFullView({ ownPlanner, confirmedProjects, assignedGanttTasks, weekStartDate, weekLabel, teamMembers }: Props) {
+export function ManagerWeekPlannerFullView({ ownPlanner, confirmedProjects, assignedGanttTasks, weekStartDate, weekLabel, teamMembers }: Readonly<Props>) {
   const [activeTab, setActiveTab] = useState<Tab>("planning");
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Navigation semaine — partagée entre les deux onglets */}
+      <WeekNav weekStartDate={weekStartDate} weekLabel={weekLabel} />
+
       <div className="flex border-b border-gray200">
         {TABS.map((tab) => (
           <button
@@ -51,6 +55,7 @@ export function ManagerWeekPlannerFullView({ ownPlanner, confirmedProjects, assi
             assignedGanttTasks={assignedGanttTasks}
             weekStartDate={weekStartDate}
             validatorLabel="l'Administrateur"
+            hideWeekNav
           />
         ) : (
           <EmptyWeekView weekStartDate={weekStartDate} weekLabel={weekLabel} />

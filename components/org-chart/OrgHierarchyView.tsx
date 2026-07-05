@@ -1,6 +1,7 @@
 "use client";
 
-import { Shield, Users, UsersRound } from "lucide-react";
+import { useState } from "react";
+import { Shield, Users, UsersRound, X, Mail, Building2 } from "lucide-react";
 import { getDepartmentSwatch, type DepartmentColorValue } from "@/lib/department-colors";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -50,12 +51,14 @@ function PersonCard({
   roleOverrideLabel,
   size = "md",
   headcount,
-}: {
+  onClick,
+}: Readonly<{
   user: HierarchyUser;
   roleOverrideLabel?: string;
   size?: "lg" | "md" | "sm";
   headcount?: number;
-}) {
+  onClick?: () => void;
+}>) {
   const swatch = getDepartmentSwatch(user.color);
   const dims =
     size === "lg"
@@ -65,8 +68,10 @@ function PersonCard({
         : { avatar: "h-9 w-9 text-xs", pad: "p-3", width: "w-64", name: "text-xs" };
 
   return (
-    <div
-      className={`flex ${dims.width} shrink-0 items-center gap-3 rounded-xl border-2 bg-facamWhite ${dims.pad} shadow-sm transition-shadow hover:shadow-md ${swatch.border}`}
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex ${dims.width} shrink-0 items-center gap-3 rounded-xl border-2 bg-facamWhite text-left ${dims.pad} shadow-sm transition-shadow hover:shadow-md hover:border-facamBlue/40 cursor-pointer ${swatch.border}`}
     >
       <div
         className={`flex ${dims.avatar} shrink-0 items-center justify-center rounded-full font-bold text-facamWhite ${swatch.dot}`}
@@ -86,18 +91,18 @@ function PersonCard({
           {headcount}
         </div>
       )}
-    </div>
+    </button>
   );
 }
 
 // ── Connecteurs ────────────────────────────────────────────────────────────────
 
-function VerticalConnector({ height = "h-6" }: { height?: string }) {
+function VerticalConnector({ height = "h-6" }: Readonly<{ height?: string }>) {
   return <div className={`mx-auto ${height} w-px bg-gray300`} />;
 }
 
 /** Rangée d'éléments reliés à un même parent par une ligne horizontale (bus) + un drop vertical chacun. */
-function ConnectedRow({ children }: { children: React.ReactNode[] }) {
+function ConnectedRow({ children }: Readonly<{ children: React.ReactNode[] }>) {
   if (children.length === 0) return null;
   if (children.length === 1) {
     return (
@@ -119,18 +124,176 @@ function ConnectedRow({ children }: { children: React.ReactNode[] }) {
   );
 }
 
+// ── Panneau latéral détail personne ────────────────────────────────────────────
+
+export type SelectedPerson = {
+  user: HierarchyUser;
+  managerName?: string;
+  reports?: HierarchyUser[];
+  totalHeadcount?: number;
+};
+
+function PersonDetailPanel({
+  selected,
+  onClose,
+}: Readonly<{
+  selected: SelectedPerson | null;
+  onClose: () => void;
+}>) {
+  const open = selected !== null;
+  const swatch = getDepartmentSwatch(selected?.user.color ?? null);
+
+  return (
+    <>
+      {/* Overlay */}
+      <button
+        type="button"
+        aria-label="Fermer le panneau"
+        onClick={onClose}
+        tabIndex={open ? 0 : -1}
+        className={`fixed inset-0 z-40 cursor-default bg-facamBlack/30 transition-opacity ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+
+      {/* Panneau */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-full max-w-sm flex-col overflow-y-auto bg-facamWhite shadow-2xl transition-transform duration-300 ease-out ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {selected && (
+          <>
+            <div className="flex items-start justify-between border-b border-gray200 p-5">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-bold text-facamWhite ${swatch.dot}`}
+                >
+                  {initials(selected.user.fullName)}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-facamDark">
+                    {selected.user.fullName}
+                  </p>
+                  <p className="text-xs text-gray500">
+                    {ROLE_LABELS[selected.user.role] ?? selected.user.role}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray400 hover:bg-gray100 hover:text-facamDark transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-5 p-5">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2.5">
+                  <Building2 size={14} className={swatch.text} />
+                  <span className="text-sm text-facamDark">{selected.user.departmentName}</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Mail size={14} className="text-gray400" />
+                  <a
+                    href={`mailto:${selected.user.email}`}
+                    className="truncate text-sm text-facamBlue hover:underline"
+                  >
+                    {selected.user.email}
+                  </a>
+                </div>
+              </div>
+
+              {selected.managerName && (
+                <div className="rounded-lg border border-gray200 bg-gray50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray400">
+                    Rattaché·e à
+                  </p>
+                  <p className="mt-1 flex items-center gap-1.5 text-sm text-facamDark">
+                    <Shield size={13} className="text-facamBlue" />
+                    {selected.managerName}
+                  </p>
+                </div>
+              )}
+
+              {typeof selected.totalHeadcount === "number" && (
+                <div className="rounded-lg border border-gray200 bg-gray50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray400">
+                    Effectif de l&apos;organisation
+                  </p>
+                  <p className="mt-1 text-sm text-facamDark">{selected.totalHeadcount} collaborateurs</p>
+                </div>
+              )}
+
+              {selected.reports && (
+                <div>
+                  <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray400">
+                    <UsersRound size={11} />
+                    Équipe ({selected.reports.length})
+                  </p>
+                  {selected.reports.length === 0 ? (
+                    <p className="text-xs text-gray400">Aucun collaborateur rattaché.</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {selected.reports.map((r) => (
+                        <div
+                          key={r.id}
+                          className="flex items-center gap-2.5 rounded-lg border border-gray200 p-2.5"
+                        >
+                          <div
+                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-facamWhite ${getDepartmentSwatch(r.color).dot}`}
+                          >
+                            {initials(r.fullName)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-medium text-facamDark">{r.fullName}</p>
+                            <p className="truncate text-[10px] text-gray400">
+                              {ROLE_LABELS[r.role] ?? r.role}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </aside>
+    </>
+  );
+}
+
 // ── Groupe Manager + ses collaborateurs ────────────────────────────────────────
 
-function ManagerGroupBlock({ group }: { group: ManagerGroup }) {
+function ManagerGroupBlock({
+  group,
+  onSelectPerson,
+}: Readonly<{
+  group: ManagerGroup;
+  onSelectPerson: (p: SelectedPerson) => void;
+}>) {
   return (
     <div className="flex flex-col items-center gap-0">
-      <PersonCard user={group.manager} size="md" headcount={group.reports.length || undefined} />
+      <PersonCard
+        user={group.manager}
+        size="md"
+        headcount={group.reports.length || undefined}
+        onClick={() => onSelectPerson({ user: group.manager, reports: group.reports })}
+      />
       {group.reports.length > 0 && (
         <>
           <VerticalConnector height="h-5" />
           <ConnectedRow>
             {group.reports.map((r) => (
-              <PersonCard key={r.id} user={r} size="sm" />
+              <PersonCard
+                key={r.id}
+                user={r}
+                size="sm"
+                onClick={() => onSelectPerson({ user: r, managerName: group.manager.fullName })}
+              />
             ))}
           </ConnectedRow>
         </>
@@ -141,8 +304,9 @@ function ManagerGroupBlock({ group }: { group: ManagerGroup }) {
 
 // ── Vue principale ──────────────────────────────────────────────────────────────
 
-export function OrgHierarchyView({ admins, managerGroups, unassigned, legend, totalHeadcount }: Props) {
+export function OrgHierarchyView({ admins, managerGroups, unassigned, legend, totalHeadcount }: Readonly<Props>) {
   const hasManagers = managerGroups.length > 0;
+  const [selected, setSelected] = useState<SelectedPerson | null>(null);
 
   return (
     <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
@@ -164,6 +328,7 @@ export function OrgHierarchyView({ admins, managerGroups, unassigned, legend, to
                   roleOverrideLabel="Directeur Général"
                   size="lg"
                   headcount={totalHeadcount}
+                  onClick={() => setSelected({ user: a, totalHeadcount })}
                 />
               ))}
             </div>
@@ -177,7 +342,7 @@ export function OrgHierarchyView({ admins, managerGroups, unassigned, legend, to
                 {managerGroups.map((group) => (
                   <div key={group.manager.id} className="relative">
                     <div className="absolute left-1/2 top-0 h-7 w-px -translate-x-1/2 -translate-y-7 bg-gray300" />
-                    <ManagerGroupBlock group={group} />
+                    <ManagerGroupBlock group={group} onSelectPerson={setSelected} />
                   </div>
                 ))}
               </div>
@@ -193,7 +358,7 @@ export function OrgHierarchyView({ admins, managerGroups, unassigned, legend, to
               </div>
               <div className="flex flex-wrap justify-center gap-3">
                 {unassigned.map((u) => (
-                  <PersonCard key={u.id} user={u} size="sm" />
+                  <PersonCard key={u.id} user={u} size="sm" onClick={() => setSelected({ user: u })} />
                 ))}
               </div>
             </div>
@@ -222,6 +387,8 @@ export function OrgHierarchyView({ admins, managerGroups, unassigned, legend, to
           </div>
         </aside>
       )}
+
+      <PersonDetailPanel selected={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
