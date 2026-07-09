@@ -3,29 +3,53 @@
 import { useState } from "react";
 import type { MockProject, AssignedGanttTask } from "./types";
 
-type TaskType = "" | "hors-projet" | "projet";
+type TaskType = "" | "hors-projet" | "projet" | "assignee" | "personnelle";
+
+export type TaskSource = {
+  projectId?: string | null;
+  assignedTaskId?: string | null;
+  personalTaskId?: string | null;
+};
+
+type SimpleTaskOption = { id: string; title: string };
 
 type Props = {
   confirmedProjects: MockProject[];
   assignedGanttTasks?: AssignedGanttTask[];
-  onAdd: (title: string, projectId: string | null) => void;
+  myAssignedTasks?: SimpleTaskOption[];
+  myPersonalTasks?: SimpleTaskOption[];
+  onAdd: (title: string, source: TaskSource) => void;
   onCancel: () => void;
 };
 
-export function AddTaskInline({ confirmedProjects, assignedGanttTasks = [], onAdd, onCancel }: Props) {
+export function AddTaskInline({
+  confirmedProjects,
+  assignedGanttTasks = [],
+  myAssignedTasks = [],
+  myPersonalTasks = [],
+  onAdd,
+  onCancel,
+}: Readonly<Props>) {
   const [taskType, setTaskType] = useState<TaskType>("");
   const [projectId, setProjectId] = useState("");
   const [ganttTaskId, setGanttTaskId] = useState("");
+  const [assignedTaskId, setAssignedTaskId] = useState("");
+  const [personalTaskId, setPersonalTaskId] = useState("");
   const [title, setTitle] = useState("");
-
 
   const projectTasks = assignedGanttTasks.filter((t) => t.projectId === projectId);
 
-  function handleTaskTypeChange(type: TaskType) {
-    setTaskType(type);
+  function resetSelections() {
     setProjectId("");
     setGanttTaskId("");
+    setAssignedTaskId("");
+    setPersonalTaskId("");
     setTitle("");
+  }
+
+  function handleTaskTypeChange(type: TaskType) {
+    setTaskType(type);
+    resetSelections();
   }
 
   function handleProjectChange(newId: string) {
@@ -44,15 +68,32 @@ export function AddTaskInline({ confirmedProjects, assignedGanttTasks = [], onAd
     }
   }
 
+  function handleAssignedTaskChange(taskId: string) {
+    setAssignedTaskId(taskId);
+    const task = myAssignedTasks.find((t) => t.id === taskId);
+    setTitle(task ? task.title : "");
+  }
+
+  function handlePersonalTaskChange(taskId: string) {
+    setPersonalTaskId(taskId);
+    const task = myPersonalTasks.find((t) => t.id === taskId);
+    setTitle(task ? task.title : "");
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
     if (taskType === "projet" && !projectId) return;
-    onAdd(title.trim(), taskType === "projet" ? projectId : null);
+    if (taskType === "assignee" && !assignedTaskId) return;
+    if (taskType === "personnelle" && !personalTaskId) return;
+
+    onAdd(title.trim(), {
+      projectId: taskType === "projet" ? projectId : null,
+      assignedTaskId: taskType === "assignee" ? assignedTaskId : null,
+      personalTaskId: taskType === "personnelle" ? personalTaskId : null,
+    });
     setTaskType("");
-    setProjectId("");
-    setGanttTaskId("");
-    setTitle("");
+    resetSelections();
   }
 
   return (
@@ -60,7 +101,7 @@ export function AddTaskInline({ confirmedProjects, assignedGanttTasks = [], onAd
       onSubmit={handleSubmit}
       className="flex flex-col gap-2 rounded-lg border border-facamBlue/30 bg-facamBlueTint/50 p-2.5"
     >
-      {/* Étape 1 : Hors-projet ou Projet */}
+      {/* Étape 1 : source de la tâche */}
       <select
         value={taskType}
         onChange={(e) => handleTaskTypeChange(e.target.value as TaskType)}
@@ -69,6 +110,8 @@ export function AddTaskInline({ confirmedProjects, assignedGanttTasks = [], onAd
         <option value="">— Type de tâche —</option>
         <option value="hors-projet">Hors-projet</option>
         <option value="projet">Projet</option>
+        <option value="assignee">Tâche attribuée par mon manager</option>
+        <option value="personnelle">Tâche personnelle</option>
       </select>
 
       {/* Étape 2 : projets auxquels l'utilisateur est rattaché */}
@@ -109,6 +152,50 @@ export function AddTaskInline({ confirmedProjects, assignedGanttTasks = [], onAd
         </select>
       )}
 
+      {/* Tâche attribuée par le manager */}
+      {taskType === "assignee" && (
+        <select
+          value={assignedTaskId}
+          onChange={(e) => handleAssignedTaskChange(e.target.value)}
+          className="rounded border border-facamBlue/40 bg-facamBlueTint px-2 py-1.5 text-xs text-facamBlack focus:border-facamBlue focus:outline-none"
+        >
+          <option value="">— Sélectionner une tâche attribuée —</option>
+          {myAssignedTasks.length > 0 ? (
+            myAssignedTasks.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))
+          ) : (
+            <option disabled value="">
+              Aucune tâche attribuée pour le moment
+            </option>
+          )}
+        </select>
+      )}
+
+      {/* Tâche personnelle */}
+      {taskType === "personnelle" && (
+        <select
+          value={personalTaskId}
+          onChange={(e) => handlePersonalTaskChange(e.target.value)}
+          className="rounded border border-facamBlue/40 bg-facamBlueTint px-2 py-1.5 text-xs text-facamBlack focus:border-facamBlue focus:outline-none"
+        >
+          <option value="">— Sélectionner une tâche personnelle —</option>
+          {myPersonalTasks.length > 0 ? (
+            myPersonalTasks.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))
+          ) : (
+            <option disabled value="">
+              Aucune tâche personnelle créée pour le moment
+            </option>
+          )}
+        </select>
+      )}
+
       {/* Titre — visible dès qu'un type est choisi, pré-rempli si tâche sélectionnée */}
       {taskType !== "" && (
         <input
@@ -118,7 +205,7 @@ export function AddTaskInline({ confirmedProjects, assignedGanttTasks = [], onAd
           placeholder="Titre de la tâche…"
           className="rounded border border-gray300 bg-facamWhite px-2 py-1.5 text-xs text-facamBlack placeholder:text-gray400 focus:border-facamBlue focus:outline-none focus:ring-1 focus:ring-facamBlue/20"
           required
-          autoFocus={taskType === "hors-projet" || !ganttTaskId}
+          autoFocus={taskType === "hors-projet" || (!ganttTaskId && !assignedTaskId && !personalTaskId)}
         />
       )}
 

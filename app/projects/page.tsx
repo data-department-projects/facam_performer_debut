@@ -4,10 +4,19 @@ import type { MockProject } from "@/components/projects/ProjectList";
 import { CollaboratorProjectsView, type CollaboratorProject } from "@/components/projects/CollaboratorProjectsView";
 import { ProjectPageTabs } from "@/components/projects/ProjectPageTabs";
 import type { MyProjectEntry } from "@/components/projects/MyProjectTasksView";
+import type { MyAssignedTask } from "@/components/projects/MyAssignedTasksSection";
+import type { MyPersonalTask } from "@/components/projects/MyPersonalTasksSection";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+
+function getCurrentWeekMondayUTC(): Date {
+  const now = new Date();
+  const day = now.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diff));
+}
 
 export default async function ProjectsPage() {
   const session = await auth();
@@ -59,9 +68,47 @@ export default async function ProjectsPage() {
       })),
     }));
 
+    const myAssignedTasksRaw = await prisma.assignedTaskAssignee.findMany({
+      where: { userId },
+      select: {
+        assignedTask: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            createdBy: { select: { fullName: true } },
+            weekPlannerTasks: {
+              where: { weekPlanner: { userId, weekStartDate: getCurrentWeekMondayUTC() } },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
+      },
+      orderBy: { assignedTask: { createdAt: "desc" } },
+    });
+
+    const assignedTasks: MyAssignedTask[] = myAssignedTasksRaw.map((a) => ({
+      id: a.assignedTask.id,
+      title: a.assignedTask.title,
+      description: a.assignedTask.description,
+      createdByName: a.assignedTask.createdBy.fullName,
+      alreadyAddedThisWeek: a.assignedTask.weekPlannerTasks.length > 0,
+    }));
+
+    const personalTasks: MyPersonalTask[] = await prisma.personalTask.findMany({
+      where: { userId },
+      select: { id: true, title: true, description: true },
+      orderBy: { createdAt: "desc" },
+    });
+
     return (
-      <AppShell pageTitle="Mes Projets">
-        <CollaboratorProjectsView projects={projects} />
+      <AppShell pageTitle="Mes projets et tâches">
+        <CollaboratorProjectsView
+          projects={projects}
+          assignedTasks={assignedTasks}
+          personalTasks={personalTasks}
+        />
       </AppShell>
     );
   }
@@ -148,9 +195,56 @@ export default async function ProjectsPage() {
     })),
   }));
 
+  // Tâches indépendantes (tab 3, Manager uniquement) — hors de tout projet
+  let assignedTasksSection;
+  if (role === "MANAGER") {
+    const [assignedTasksRaw, eligibleAssignees] = await Promise.all([
+      prisma.assignedTask.findMany({
+        where: { createdByUserId: userId },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          assignees: { select: { user: { select: { id: true, fullName: true } } } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.user.findMany({
+        where: {
+          departmentId: session.user.departmentId ?? "__none__",
+          role: { in: ["COLLABORATOR", "INTERN"] },
+          isActive: true,
+        },
+        select: { id: true, fullName: true },
+        orderBy: { fullName: "asc" },
+      }),
+    ]);
+
+    assignedTasksSection = {
+      tasks: assignedTasksRaw.map((t) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        assignees: t.assignees.map((a) => a.user),
+      })),
+      eligibleAssignees,
+    };
+  }
+
+  const personalTasks: MyPersonalTask[] = await prisma.personalTask.findMany({
+    where: { userId },
+    select: { id: true, title: true, description: true },
+    orderBy: { createdAt: "desc" },
+  });
+
   return (
-    <AppShell pageTitle="Projets">
-      <ProjectPageTabs projects={projects} myProjects={myProjects} />
+    <AppShell pageTitle="Projets et tâches">
+      <ProjectPageTabs
+        projects={projects}
+        myProjects={myProjects}
+        personalTasks={personalTasks}
+        assignedTasksSection={assignedTasksSection}
+      />
     </AppShell>
   );
 }

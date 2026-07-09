@@ -24,7 +24,7 @@ export function WeekNav({ weekStartDate, weekLabel }: Readonly<Props>) {
     <div className="flex items-center justify-between gap-4 rounded-xl border border-gray200 bg-facamWhite px-4 py-3 shadow-sm">
       <button
         onClick={() => change(-1)}
-        className="flex items-center gap-1 rounded-md border border-gray200 bg-facamWhite px-3 py-2 text-sm text-gray500 hover:bg-gray50"
+        className="flex items-center gap-1 rounded-md bg-facamYellow px-3 py-2 text-sm font-medium text-facamDark transition-colors hover:brightness-105"
       >
         <ChevronLeft size={14} />
         Semaine précédente
@@ -34,7 +34,7 @@ export function WeekNav({ weekStartDate, weekLabel }: Readonly<Props>) {
 
       <button
         onClick={() => change(1)}
-        className="flex items-center gap-1 rounded-md border border-gray200 bg-facamWhite px-3 py-2 text-sm text-gray500 hover:bg-gray50"
+        className="flex items-center gap-1 rounded-md bg-facamYellow px-3 py-2 text-sm font-medium text-facamDark transition-colors hover:brightness-105"
       >
         Semaine suivante
         <ChevronRight size={14} />

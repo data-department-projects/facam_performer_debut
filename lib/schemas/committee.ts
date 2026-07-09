@@ -6,10 +6,10 @@ export const createCommitteeSchema = z.object({
   description: z.string().optional(),
   responsibleUserId: z.string().min(1, "Le responsable est requis"),
   objectives: z.string().min(1, "Les objectifs sont requis"),
-  frequency: z.enum(["WEEKLY", "BIMONTHLY", "MONTHLY", "QUARTERLY", "ANNUAL", "AD_HOC"], {
+  frequency: z.enum(["WEEKLY", "SEMI_MONTHLY", "BIMONTHLY", "MONTHLY", "QUARTERLY", "ANNUAL", "AD_HOC"], {
     error: "Sélectionner une fréquence",
   }),
-  projectId: z.string().nullable().optional(),
+  projectIds: z.array(z.string().min(1)).min(1, "Sélectionner au moins un projet"),
   departmentIds: z.array(z.string().min(1)).min(1, "Sélectionner au moins un département"),
   participantIds: z.array(z.string().min(1)).default([]),
   guestIds: z.array(z.string().min(1)).default([]),

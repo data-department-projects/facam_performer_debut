@@ -32,7 +32,7 @@ Hypothèse structurante : le système gère une seule entité (FACAM STAIRWAY), 
 **Logique :**
 - Client Resend configuré (lib/email.ts)
 - Templates fournis par le client intégrés : réinitialisation par OTP ("otp-reset"), envoi des identifiants à la création de compte ("credentials")
-- Job planifié (Vercel Cron) — rappel quotidien aux collaborateurs n'ayant pas mis à jour leurs tâches du jour
+- Job planifié (cron-job.org, pas Vercel Cron — coût) — rappel quotidien aux collaborateurs n'ayant pas mis à jour leurs tâches du jour
 - Job planifié — rappel hebdomadaire le vendredi à 15h pour la validation du Week Planner de la semaine suivante
 
 ### 04 Schéma de base de données — PostgreSQL
@@ -211,12 +211,14 @@ Hypothèse structurante : le système gère une seule entité (FACAM STAIRWAY), 
 **Logique :**
 - Mise à jour du statut de chaque tâche du jour par le collaborateur
 - Commentaire obligatoire bloquant la sauvegarde si le statut est "Non terminé" (Règle 12)
-- Déclaration du temps passé par activité/tâche (alimente le Suivi ETP en Phase 6)
+- Déclaration du temps passé par activité/tâche
 - Mise à jour automatique de l'avancement du projet lié, si applicable
 
 ---
 
 ## Phase 6 — Suivi ETP & Temps de travail
+
+**⚠️ Module supprimé le 2026-07-08** (décision client) — retiré entièrement du code (`app/etp-tracking/`, `components/etp/`, `lib/reports/`, `app/api/reports/etp/`, entrée de navigation Admin). Le périmètre ci-dessous est conservé pour l'historique mais ne doit plus être implémenté ni maintenu ; voir `context/progress-tracker.md` pour la note de suppression.
 
 ### 23 Suivi ETP & Temps — UI complète (Administrateur)
 
@@ -277,7 +279,7 @@ Hypothèse structurante : le système gère une seule entité (FACAM STAIRWAY), 
 
 **Logique :**
 - Agrégation en temps réel des flux issus des Phases 4 (Projets, Comités) et 5 (Week Planner)
-- Génération d'alertes sur retards, tâches récurrentes "Non terminé", ou surcharge détectée via le Suivi ETP
+- Génération d'alertes sur retards ou tâches récurrentes "Non terminé"
 - Filtrage automatique "Flux de son équipe" pour le rôle Manager, aucun accès pour le Collaborateur
 
 ---
@@ -293,7 +295,7 @@ Hypothèse structurante : le système gère une seule entité (FACAM STAIRWAY), 
 ### 31 Tableau de bord — Logique
 
 **Logique :**
-- Calcul des indicateurs à partir des données réelles : Week Planner, Projets/Gantt, Comités, Objectifs, Suivi ETP
+- Calcul des indicateurs à partir des données réelles : Week Planner, Projets/Gantt, Comités, Objectifs
 - Requêtes de consolidation optimisées côté serveur pour respecter le temps de réponse ≤ 3 secondes même à 100 utilisateurs simultanés
 - Filtrage des données selon le rôle et le périmètre de l'utilisateur connecté
 

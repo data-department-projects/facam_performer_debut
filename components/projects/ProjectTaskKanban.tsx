@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { GripVertical, Loader2 } from "lucide-react";
 import { updateGanttTaskStatus } from "@/actions/ganttTasks";
+import { isGanttTaskOverdue } from "@/lib/overdue";
 import type { KanbanTask } from "@/components/projects/CollaboratorProjectsView";
 
 type GanttStatus = "TODO" | "IN_PROGRESS" | "DONE" | "BLOCKED";
@@ -166,13 +167,17 @@ export function ProjectTaskKanban({ tasks: initialTasks }: Props) {
 
               {/* Tâches */}
               <div className="flex flex-1 flex-col gap-2 p-2">
-                {colTasks.map((task) => (
+                {colTasks.map((task) => {
+                  const overdue = isGanttTaskOverdue(task);
+                  return (
                   <div
                     key={task.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, task.id)}
                     onDragEnd={handleDragEnd}
-                    className={`cursor-grab rounded-lg border border-gray200 bg-facamWhite p-3 shadow-sm transition-all active:cursor-grabbing ${
+                    className={`cursor-grab rounded-lg border p-3 shadow-sm transition-all active:cursor-grabbing ${
+                      overdue ? "border-error/50 bg-errorLight/40" : "border-gray200 bg-facamWhite"
+                    } ${
                       draggingId === task.id ? "opacity-30 shadow-none" : "hover:border-gray300 hover:shadow"
                     }`}
                   >
@@ -185,8 +190,8 @@ export function ProjectTaskKanban({ tasks: initialTasks }: Props) {
                         <p className="text-xs font-medium leading-snug text-facamBlack">
                           {task.title}
                         </p>
-                        <p className="mt-1 text-[10px] text-gray400">
-                          Échéance&nbsp;{fmt(task.endDate)}
+                        <p className={`mt-1 text-[10px] ${overdue ? "font-semibold text-error" : "text-gray400"}`}>
+                          Échéance&nbsp;{fmt(task.endDate)}{overdue ? " — en retard" : ""}
                         </p>
 
                         {/* Barre de progression */}
@@ -211,7 +216,8 @@ export function ProjectTaskKanban({ tasks: initialTasks }: Props) {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
 
                 {colTasks.length === 0 && (
                   <div className="flex flex-1 items-center justify-center py-6">

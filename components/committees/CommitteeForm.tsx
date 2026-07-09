@@ -4,17 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, X } from "lucide-react";
 import { createCommittee } from "@/actions/committees";
-
-type Frequency = "WEEKLY" | "BIMONTHLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "AD_HOC";
-
-const FREQUENCY_OPTIONS: { value: Frequency; label: string }[] = [
-  { value: "WEEKLY", label: "Hebdomadaire" },
-  { value: "BIMONTHLY", label: "Bimensuel" },
-  { value: "MONTHLY", label: "Mensuel" },
-  { value: "QUARTERLY", label: "Trimestriel" },
-  { value: "ANNUAL", label: "Annuel" },
-  { value: "AD_HOC", label: "Ponctuel" },
-];
+import { FREQUENCY_OPTIONS } from "@/lib/committee-frequency";
+import type { CommitteeFrequency } from "@/app/generated/prisma/client";
 
 type SelectOption = { id: string; label: string };
 
@@ -89,8 +80,8 @@ export function CommitteeForm({ departments, users, projects }: Props) {
   const [description, setDescription] = useState("");
   const [responsibleId, setResponsibleId] = useState("");
   const [objectives, setObjectives] = useState("");
-  const [frequency, setFrequency] = useState<Frequency>("MONTHLY");
-  const [projectId, setProjectId] = useState("");
+  const [frequency, setFrequency] = useState<CommitteeFrequency>("MONTHLY");
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [selectedGuests, setSelectedGuests] = useState<string[]>([]);
@@ -98,6 +89,7 @@ export function CommitteeForm({ departments, users, projects }: Props) {
 
   const deptOptions: SelectOption[] = departments.map((d) => ({ id: d.id, label: d.name }));
   const userOptions: SelectOption[] = users.map((u) => ({ id: u.id, label: u.fullName }));
+  const projectOptions: SelectOption[] = projects.map((p) => ({ id: p.id, label: `${p.code} — ${p.name}` }));
 
   function addToList(list: string[], setList: (v: string[]) => void, id: string) {
     if (!list.includes(id)) setList([...list, id]);
@@ -110,6 +102,10 @@ export function CommitteeForm({ departments, users, projects }: Props) {
     e.preventDefault();
     setError(null);
 
+    if (selectedProjects.length === 0) {
+      setError("Veuillez sélectionner au moins un projet.");
+      return;
+    }
     if (selectedDepts.length === 0) {
       setError("Veuillez sélectionner au moins un département.");
       return;
@@ -122,7 +118,7 @@ export function CommitteeForm({ departments, users, projects }: Props) {
         responsibleUserId: responsibleId,
         objectives: objectives.trim(),
         frequency,
-        projectId: projectId || null,
+        projectIds: selectedProjects,
         departmentIds: selectedDepts,
         participantIds: selectedParticipants,
         guestIds: selectedGuests,
@@ -211,7 +207,7 @@ export function CommitteeForm({ departments, users, projects }: Props) {
               <select
                 id="committee-frequency"
                 value={frequency}
-                onChange={(e) => setFrequency(e.target.value as Frequency)}
+                onChange={(e) => setFrequency(e.target.value as CommitteeFrequency)}
                 className="rounded-md border border-gray300 bg-facamWhite px-3 py-2 text-sm text-facamBlack focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
               >
                 {FREQUENCY_OPTIONS.map((opt) => (
@@ -223,25 +219,19 @@ export function CommitteeForm({ departments, users, projects }: Props) {
             </div>
           </div>
 
-          {/* Projet associé */}
+          {/* Projets associés */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="committee-project" className="text-sm font-medium text-facamBlack">
-              Projet associé
-              <span className="ml-1.5 text-xs font-normal text-gray400">(optionnel)</span>
+            <label htmlFor="project-select" className="text-sm font-medium text-facamBlack">
+              Projets associés <span className="text-error">*</span>
             </label>
-            <select
-              id="committee-project"
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              className="rounded-md border border-gray300 bg-facamWhite px-3 py-2 text-sm text-facamBlack focus:border-facamBlue focus:outline-none focus:ring-2 focus:ring-facamBlue/20"
-            >
-              <option value="">Aucun projet associé</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} — {p.name}
-                </option>
-              ))}
-            </select>
+            <MultiSelect
+              id="project-select"
+              placeholder="— Ajouter un projet —"
+              options={projectOptions}
+              selected={selectedProjects}
+              onAdd={(id) => addToList(selectedProjects, setSelectedProjects, id)}
+              onRemove={(id) => removeFromList(selectedProjects, setSelectedProjects, id)}
+            />
           </div>
 
           {/* Objectifs */}

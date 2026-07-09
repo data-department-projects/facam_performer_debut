@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { CheckCircle2, Circle, Loader2 } from "lucide-react";
 import { updateMyCommitteeActionStatus } from "@/actions/committees";
+import { isCommitteeActionOverdue } from "@/lib/overdue";
 
 export type MyCommitteeAction = {
   id: string;
@@ -21,11 +22,6 @@ function formatDate(iso: string) {
     month: "short",
     year: "numeric",
   });
-}
-
-function isOverdue(dueDate: string, status: "PENDING" | "DONE") {
-  if (status === "DONE") return false;
-  return new Date(dueDate + "T00:00:00") < new Date(new Date().toDateString());
 }
 
 export function MyCommitteeActionsList({ actions }: Readonly<Props>) {
@@ -82,7 +78,7 @@ export function MyCommitteeActionsList({ actions }: Readonly<Props>) {
           <tbody>
             {actions.map((action) => {
               const status = getStatus(action);
-              const overdue = isOverdue(action.dueDate, status);
+              const overdue = isCommitteeActionOverdue({ dueDate: action.dueDate, status });
               const isPending = pendingId === action.id;
 
               return (

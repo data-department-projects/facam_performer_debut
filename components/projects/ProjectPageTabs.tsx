@@ -3,15 +3,27 @@
 import { useState } from "react";
 import { ProjectList, type MockProject } from "@/components/projects/ProjectList";
 import { MyProjectTasksView, type MyProjectEntry } from "@/components/projects/MyProjectTasksView";
+import {
+  AssignedTasksManagerView,
+  type ManagerAssignedTask,
+} from "@/components/projects/AssignedTasksManagerView";
+import { MyPersonalTasksSection, type MyPersonalTask } from "@/components/projects/MyPersonalTasksSection";
 
-type Tab = "all" | "mine";
+type Tab = "all" | "mine" | "assignedTasks" | "personal";
+
+type SimpleUser = { id: string; fullName: string };
 
 type Props = {
   projects: MockProject[];
   myProjects: MyProjectEntry[];
+  personalTasks: MyPersonalTask[];
+  assignedTasksSection?: {
+    tasks: ManagerAssignedTask[];
+    eligibleAssignees: SimpleUser[];
+  };
 };
 
-export function ProjectPageTabs({ projects, myProjects }: Props) {
+export function ProjectPageTabs({ projects, myProjects, personalTasks, assignedTasksSection }: Readonly<Props>) {
   const [activeTab, setActiveTab] = useState<Tab>("all");
 
   const totalMyTasks = myProjects.reduce((acc, p) => acc + p.tasks.length, 0);
@@ -19,6 +31,10 @@ export function ProjectPageTabs({ projects, myProjects }: Props) {
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: "all", label: "Tous les projets", count: projects.length },
     { id: "mine", label: "Mes projets & tâches", count: totalMyTasks },
+    ...(assignedTasksSection
+      ? [{ id: "assignedTasks" as const, label: "Tâches indépendantes", count: assignedTasksSection.tasks.length }]
+      : []),
+    { id: "personal", label: "Mes tâches personnelles", count: personalTasks.length },
   ];
 
   return (
@@ -55,6 +71,13 @@ export function ProjectPageTabs({ projects, myProjects }: Props) {
       {/* Contenu */}
       {activeTab === "all" && <ProjectList projects={projects} />}
       {activeTab === "mine" && <MyProjectTasksView projects={myProjects} />}
+      {activeTab === "assignedTasks" && assignedTasksSection && (
+        <AssignedTasksManagerView
+          tasks={assignedTasksSection.tasks}
+          eligibleAssignees={assignedTasksSection.eligibleAssignees}
+        />
+      )}
+      {activeTab === "personal" && <MyPersonalTasksSection tasks={personalTasks} />}
     </div>
   );
 }

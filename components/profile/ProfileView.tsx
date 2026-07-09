@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { User, Mail, Building2, Shield, Lock, Eye, EyeOff } from "lucide-react";
-import { changePassword } from "@/actions/profile";
+import { useState, useTransition } from "react";
+import { User, Mail, Building2, Shield, Lock, Eye, EyeOff, LogOut } from "lucide-react";
+import { changePassword, logoutAction } from "@/actions/profile";
 
 type Props = {
   fullName: string;
@@ -29,6 +29,13 @@ export function ProfileView({ fullName, email, role, departmentName, memberSince
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoggingOut, startLogout] = useTransition();
+
+  function handleLogout() {
+    startLogout(async () => {
+      await logoutAction();
+    });
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,7 +65,18 @@ export function ProfileView({ fullName, email, role, departmentName, memberSince
     <div className="mx-auto max-w-2xl space-y-6">
       {/* Info card */}
       <div className="rounded-xl border border-gray200 bg-facamWhite p-6">
-        <h2 className="mb-5 text-base font-semibold text-facamDark">Informations du compte</h2>
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-facamDark">Informations du compte</h2>
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="inline-flex items-center gap-1.5 rounded-md border border-gray200 px-3 py-1.5 text-xs font-medium text-gray500 transition-colors hover:border-error hover:text-error disabled:opacity-50"
+          >
+            <LogOut size={13} />
+            {isLoggingOut ? "Déconnexion…" : "Se déconnecter"}
+          </button>
+        </div>
 
         <div className="mb-6 flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-facamBlueMid text-xl font-semibold text-facamWhite">

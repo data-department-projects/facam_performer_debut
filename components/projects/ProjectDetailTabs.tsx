@@ -50,7 +50,7 @@ export function ProjectDetailTabs({ project, milestones, expenses, ganttTasks, t
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "fiche", label: "Fiche projet" },
-    { id: "gantt", label: "Planning Gantt" },
+    { id: "gantt", label: "Tâches" },
     { id: "jalons", label: "Jalons" },
     { id: "finances", label: "Finances" },
   ];
