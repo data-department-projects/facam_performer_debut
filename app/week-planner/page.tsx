@@ -39,7 +39,7 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
   const role = session.user.role;
 
   if (role === "ADMIN") {
-    const [managers, rawAdminPlanner, adminProjects, adminGanttTasks] = await Promise.all([
+    const [managers, rawAdminPlanner, adminProjects, adminGanttTasks, adminAssignedTasks, adminPersonalTasks] = await Promise.all([
       prisma.user.findMany({
         where: { role: "MANAGER", isActive: true },
         select: {
@@ -72,6 +72,7 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
               plannedDay: true,
               status: true,
               comment: true,
+              deliverableUrl: true,
               isLocked: true,
               project: { select: { id: true, name: true, code: true } },
             },
@@ -94,6 +95,18 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
         },
         select: { id: true, title: true, projectId: true },
         orderBy: { title: "asc" },
+      }),
+      // Tâches indépendantes attribuées à l'Admin
+      prisma.assignedTaskAssignee.findMany({
+        where: { userId },
+        select: { assignedTask: { select: { id: true, title: true } } },
+        orderBy: { assignedTask: { createdAt: "desc" } },
+      }),
+      // Tâches personnelles de l'Admin
+      prisma.personalTask.findMany({
+        where: { userId },
+        select: { id: true, title: true },
+        orderBy: { createdAt: "desc" },
       }),
     ]);
 
@@ -129,6 +142,8 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
           }
           confirmedProjects={adminProjects}
           assignedGanttTasks={adminGanttTasks}
+          myAssignedTasks={adminAssignedTasks.map((a) => a.assignedTask)}
+          myPersonalTasks={adminPersonalTasks}
           weekStartDate={weekStartDate}
           weekLabel={weekLabel}
         />
@@ -136,7 +151,7 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
     );
   }
 
-  const [confirmedProjects, rawPlanner, assignedGanttTasks] = await Promise.all([
+  const [confirmedProjects, rawPlanner, assignedGanttTasks, myAssignedTasksRaw, myPersonalTasks] = await Promise.all([
     prisma.project.findMany({
       where: {
         isConfirmed: true,
@@ -161,6 +176,7 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
             plannedDay: true,
             status: true,
             comment: true,
+            deliverableUrl: true,
             isLocked: true,
             project: { select: { id: true, name: true, code: true } },
           },
@@ -177,8 +193,19 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
       select: { id: true, title: true, projectId: true },
       orderBy: { title: "asc" },
     }),
+    prisma.assignedTaskAssignee.findMany({
+      where: { userId },
+      select: { assignedTask: { select: { id: true, title: true } } },
+      orderBy: { assignedTask: { createdAt: "desc" } },
+    }),
+    prisma.personalTask.findMany({
+      where: { userId },
+      select: { id: true, title: true },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
+  const myAssignedTasks = myAssignedTasksRaw.map((a) => a.assignedTask);
   const weekLabel = formatWeekLabel(weekStartDate);
 
   if (role === "MANAGER") {
@@ -236,6 +263,8 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
           }
           confirmedProjects={confirmedProjects}
           assignedGanttTasks={assignedGanttTasks}
+          myAssignedTasks={myAssignedTasks}
+          myPersonalTasks={myPersonalTasks}
           weekStartDate={weekStartDate}
           weekLabel={weekLabel}
           teamMembers={membersForView}
@@ -264,6 +293,8 @@ export default async function WeekPlannerPage({ searchParams }: { searchParams: 
         }}
         confirmedProjects={confirmedProjects}
         assignedGanttTasks={assignedGanttTasks}
+        myAssignedTasks={myAssignedTasks}
+        myPersonalTasks={myPersonalTasks}
         weekStartDate={weekStartDate}
       />
     </AppShell>

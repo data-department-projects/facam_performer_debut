@@ -9,7 +9,7 @@ type CommitteeForMapping = {
   objectives: string;
   frequency: string;
   responsible: { fullName: string };
-  project: { id: string; name: string } | null;
+  projects: { project: { id: string; name: string } }[];
   departments: { department: { name: string } }[];
   members: { userId: string; memberType: string; user: { fullName: string } }[];
   meetings: {
@@ -30,7 +30,7 @@ type CommitteeForMapping = {
 
 export const committeeInclude = {
   responsible: { select: { fullName: true } },
-  project: { select: { id: true, name: true } },
+  projects: { include: { project: { select: { id: true, name: true } } } },
   departments: { include: { department: { select: { name: true } } } },
   members: { include: { user: { select: { fullName: true } } } },
   meetings: {
@@ -52,8 +52,7 @@ export function toMockCommittee(c: CommitteeForMapping): MockCommittee {
     responsible: c.responsible.fullName,
     objectives: c.objectives,
     frequency: c.frequency as MockCommittee["frequency"],
-    projectId: c.project?.id,
-    projectName: c.project?.name,
+    projectNames: c.projects.map((p) => p.project.name),
     departments: c.departments.map((d) => d.department.name),
     participants: c.members
       .filter((m) => m.memberType === "PARTICIPANT")

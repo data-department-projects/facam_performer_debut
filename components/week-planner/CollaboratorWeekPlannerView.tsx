@@ -2,19 +2,26 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, LayoutList } from "lucide-react";
 import { WeekDayBar } from "./WeekDayBar";
 import { DayTaskPanel } from "./DayTaskPanel";
+import { WeekOverviewGrid } from "./WeekOverviewGrid";
 import { WeekStatusBanner } from "./WeekStatusBanner";
+import type { TaskSource } from "./AddTaskInline";
 import { addWeekPlannerTask, deleteWeekPlannerTask, submitWeekPlanner } from "@/actions/weekPlanner";
+import { addUnplannedCompletedTask } from "@/actions/dailyExecution";
 import type { PlannedDay, WeekTask, WeekPlannerData, ConfirmedProject, AssignedGanttTask } from "./types";
 
 export type { WeekTask, WeekPlannerData, ConfirmedProject };
+
+type SimpleTaskOption = { id: string; title: string };
 
 type Props = {
   planner: WeekPlannerData;
   confirmedProjects: ConfirmedProject[];
   assignedGanttTasks?: AssignedGanttTask[];
+  myAssignedTasks?: SimpleTaskOption[];
+  myPersonalTasks?: SimpleTaskOption[];
   weekStartDate: string;
   validatorLabel?: string;
   noValidation?: boolean;
@@ -35,10 +42,39 @@ function lockAllTasks(tasks: WeekTask[]): WeekTask[] {
   return tasks.map((t) => ({ ...t, isLocked: true }));
 }
 
+// "Aujourd'hui" côté client, calculé en UTC pour rester en accord avec le serveur
+// (actions/dailyExecution.ts calcule le jour/la semaine courante en UTC également) —
+// sert uniquement à savoir si l'onglet actuellement affiché correspond bien au jour
+// réel, pour ne proposer l'ajout d'une tâche non planifiée que quand on regarde
+// vraiment "aujourd'hui" côté serveur.
+function getTodayInfo(): { plannedDay: PlannedDay | null; weekStartDate: string } {
+  const now = new Date();
+  const utcDay = now.getUTCDay();
+  const dayMap: Record<number, PlannedDay | null> = {
+    0: null,
+    1: "MON",
+    2: "TUE",
+    3: "WED",
+    4: "THU",
+    5: "FRI",
+    6: null,
+  };
+  const mondayOffset = utcDay === 0 ? -6 : 1 - utcDay;
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + mondayOffset));
+  const weekStartDate = [
+    monday.getUTCFullYear(),
+    String(monday.getUTCMonth() + 1).padStart(2, "0"),
+    String(monday.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+  return { plannedDay: dayMap[utcDay], weekStartDate };
+}
+
 export function CollaboratorWeekPlannerView({
   planner: initialPlanner,
   confirmedProjects,
   assignedGanttTasks,
+  myAssignedTasks,
+  myPersonalTasks,
   weekStartDate,
   validatorLabel,
   noValidation = false,
@@ -47,11 +83,17 @@ export function CollaboratorWeekPlannerView({
   const router = useRouter();
   const [planner, setPlanner] = useState(initialPlanner);
   const [activeDay, setActiveDay] = useState<PlannedDay>(() => {
-    const jsDay = new Date().getDay();
+    const utcDay = new Date().getUTCDay();
     const map: Record<number, PlannedDay> = { 1: "MON", 2: "TUE", 3: "WED", 4: "THU", 5: "FRI" };
-    return map[jsDay] ?? "MON";
+    return map[utcDay] ?? "MON";
   });
+  const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [, startTransition] = useTransition();
+
+  const isViewingToday = useMemo(() => {
+    const today = getTodayInfo();
+    return today.plannedDay !== null && today.weekStartDate === weekStartDate && activeDay === today.plannedDay;
+  }, [weekStartDate, activeDay]);
 
   const displayedMonday = new Date(weekStartDate + "T00:00:00");
   const displayedFriday = new Date(displayedMonday);
@@ -84,14 +126,17 @@ export function CollaboratorWeekPlannerView({
     return map;
   }, [planner.tasks]);
 
-  function handleAddTask(title: string, projectId: string | null) {
-    const project = projectId ? (confirmedProjects.find((p) => p.id === projectId) ?? null) : null;
+  function handleAddTask(title: string, source: TaskSource) {
+    const project = source.projectId
+      ? (confirmedProjects.find((p) => p.id === source.projectId) ?? null)
+      : null;
     const optimisticTask: WeekTask = {
       id: `optimistic-${Date.now()}`,
       title,
       plannedDay: activeDay,
       status: "STARTED",
       comment: null,
+      deliverableUrl: null,
       isLocked: false,
       project,
     };
@@ -102,10 +147,12 @@ export function CollaboratorWeekPlannerView({
         plannerId: planner.id,
         title,
         plannedDay: activeDay,
-        projectId,
+        projectId: source.projectId,
+        assignedTaskId: source.assignedTaskId,
+        personalTaskId: source.personalTaskId,
       });
       if (result.success) {
-        const confirmed = { ...result.data, project: result.data.project ?? null };
+        const confirmed = { ...result.data, deliverableUrl: null, project: result.data.project ?? null };
         setPlanner((prev) => ({
           ...prev,
           tasks: replaceTaskById(prev.tasks, optimisticTask.id, confirmed),
@@ -116,6 +163,33 @@ export function CollaboratorWeekPlannerView({
           tasks: removeTaskById(prev.tasks, optimisticTask.id),
         }));
       }
+    });
+  }
+
+  function handleAddUnplannedTask(
+    title: string,
+    deliverableUrl: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      startTransition(async () => {
+        const result = await addUnplannedCompletedTask({ title, deliverableUrl: deliverableUrl || undefined });
+        if (result.success) {
+          const newTask: WeekTask = {
+            id: result.data.weekPlannerTaskId,
+            title,
+            plannedDay: activeDay,
+            status: "DONE",
+            comment: null,
+            deliverableUrl: deliverableUrl || null,
+            isLocked: true,
+            project: null,
+          };
+          setPlanner((prev) => ({ ...prev, tasks: [...prev.tasks, newTask] }));
+          resolve({ success: true });
+        } else {
+          resolve({ success: false, error: result.error });
+        }
+      });
     });
   }
 
@@ -151,7 +225,7 @@ export function CollaboratorWeekPlannerView({
         <div className="flex items-center justify-between gap-4">
           <button
             onClick={() => handleChangeWeek(-1)}
-            className="flex items-center gap-1 rounded-md border border-gray200 bg-facamWhite px-3 py-2 text-sm text-gray500 hover:bg-gray50"
+            className="flex items-center gap-1 rounded-md bg-facamYellow px-3 py-2 text-sm font-medium text-facamDark transition-colors hover:brightness-105"
           >
             <ChevronLeft size={14} />
             Semaine précédente
@@ -161,7 +235,7 @@ export function CollaboratorWeekPlannerView({
 
           <button
             onClick={() => handleChangeWeek(1)}
-            className="flex items-center gap-1 rounded-md border border-gray200 bg-facamWhite px-3 py-2 text-sm text-gray500 hover:bg-gray50"
+            className="flex items-center gap-1 rounded-md bg-facamYellow px-3 py-2 text-sm font-medium text-facamDark transition-colors hover:brightness-105"
           >
             Semaine suivante
             <ChevronRight size={14} />
@@ -177,23 +251,53 @@ export function CollaboratorWeekPlannerView({
         noValidation={noValidation}
       />
 
-      <WeekDayBar
-        activeDay={activeDay}
-        weekMonday={displayedMonday}
-        tasksByDay={tasksByDay}
-        onSelectDay={setActiveDay}
-      />
+      <div className="flex items-center justify-end">
+        <div className="flex gap-1 rounded-lg border border-gray200 bg-facamWhite p-1">
+          <button
+            onClick={() => setViewMode("day")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              viewMode === "day" ? "bg-facamBlue text-facamWhite" : "text-gray500 hover:bg-gray50"
+            }`}
+          >
+            <LayoutList size={13} /> Vue jour
+          </button>
+          <button
+            onClick={() => setViewMode("week")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              viewMode === "week" ? "bg-facamBlue text-facamWhite" : "text-gray500 hover:bg-gray50"
+            }`}
+          >
+            <CalendarDays size={13} /> Vue semaine
+          </button>
+        </div>
+      </div>
 
-      <DayTaskPanel
-        key={activeDay}
-        day={activeDay}
-        tasks={tasksByDay[activeDay] ?? []}
-        plannerStatus={planner.status}
-        confirmedProjects={confirmedProjects}
-        assignedGanttTasks={assignedGanttTasks}
-        onAddTask={handleAddTask}
-        onDeleteTask={handleDeleteTask}
-      />
+      {viewMode === "week" ? (
+        <WeekOverviewGrid tasksByDay={tasksByDay} />
+      ) : (
+        <>
+          <WeekDayBar
+            activeDay={activeDay}
+            weekMonday={displayedMonday}
+            tasksByDay={tasksByDay}
+            onSelectDay={setActiveDay}
+          />
+
+          <DayTaskPanel
+            key={activeDay}
+            day={activeDay}
+            tasks={tasksByDay[activeDay] ?? []}
+            plannerStatus={planner.status}
+            confirmedProjects={confirmedProjects}
+            assignedGanttTasks={assignedGanttTasks}
+            myAssignedTasks={myAssignedTasks}
+            myPersonalTasks={myPersonalTasks}
+            onAddTask={handleAddTask}
+            onDeleteTask={handleDeleteTask}
+            onAddUnplannedTask={isViewingToday ? handleAddUnplannedTask : undefined}
+          />
+        </>
+      )}
     </div>
   );
 }

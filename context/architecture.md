@@ -254,6 +254,8 @@ Requête Prisma sur les utilisateurs actifs concernés
 Envoi via lib/email.ts (Resend) — chaque envoi isolé dans son propre try/catch
 ```
 
+`/api/cron/daily-reminder` scanne les `GanttTask` et `CommitteeAction` en retard (échéance dépassée, statut non terminal — `lib/overdue.ts`) et relance chaque responsable via `notifyUser()` (push ou email selon consentement), au maximum une fois toutes les ~20h par élément (`lastOverdueReminderAt`). Le même calcul de retard alimente aussi le centre de notifications (cloche, `components/notifications/NotificationBell.tsx`) et le style rouge automatique des cartes de tâches — logique centralisée, jamais dupliquée.
+
 ### Export de Rapports (Route Handlers, Administrateur uniquement)
 
 ```

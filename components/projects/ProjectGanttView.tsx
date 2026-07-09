@@ -82,13 +82,13 @@ export function ProjectGanttView({ projectId, tasks, teamMembers, isEditable, cu
 
   return (
     <>
-      <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-gray200 bg-facamWhite shadow-sm">
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="min-w-0 rounded-xl border border-gray200 bg-facamWhite shadow-sm">
 
           {/* ── Barre d'outils ── */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray100 px-6 py-4">
             <div className="flex items-center gap-3">
-              <h3 className="text-base font-semibold text-facamDark">Planning Gantt</h3>
+              <h3 className="text-base font-semibold text-facamDark">Tâches</h3>
               <span className="rounded-full bg-facamBlueTint px-2.5 py-0.5 text-xs font-medium text-facamBlue">
                 {tasks.length} tâche{tasks.length !== 1 ? "s" : ""}
               </span>

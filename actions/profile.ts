@@ -1,9 +1,13 @@
 "use server";
 
-import { auth } from "@/lib/auth";
+import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, hashPassword } from "@/lib/password";
 import { changePasswordSchema } from "@/lib/schemas/profile";
+
+export async function logoutAction(): Promise<void> {
+  await signOut({ redirectTo: "/login" });
+}
 
 export async function changePassword(
   rawData: unknown,

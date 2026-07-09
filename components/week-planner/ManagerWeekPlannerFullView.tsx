@@ -7,10 +7,14 @@ import { EmptyWeekView } from "./EmptyWeekView";
 import { WeekNav } from "./WeekNav";
 import type { WeekPlannerData, ConfirmedProject, AssignedGanttTask, TeamMember } from "./types";
 
+type SimpleTaskOption = { id: string; title: string };
+
 type Props = {
   ownPlanner: WeekPlannerData | null;
   confirmedProjects: ConfirmedProject[];
   assignedGanttTasks?: AssignedGanttTask[];
+  myAssignedTasks?: SimpleTaskOption[];
+  myPersonalTasks?: SimpleTaskOption[];
   weekStartDate: string;
   weekLabel: string;
   teamMembers: TeamMember[];
@@ -23,7 +27,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "team", label: "Mon Équipe" },
 ];
 
-export function ManagerWeekPlannerFullView({ ownPlanner, confirmedProjects, assignedGanttTasks, weekStartDate, weekLabel, teamMembers }: Readonly<Props>) {
+export function ManagerWeekPlannerFullView({ ownPlanner, confirmedProjects, assignedGanttTasks, myAssignedTasks, myPersonalTasks, weekStartDate, weekLabel, teamMembers }: Readonly<Props>) {
   const [activeTab, setActiveTab] = useState<Tab>("planning");
 
   return (
@@ -53,6 +57,8 @@ export function ManagerWeekPlannerFullView({ ownPlanner, confirmedProjects, assi
             planner={ownPlanner}
             confirmedProjects={confirmedProjects}
             assignedGanttTasks={assignedGanttTasks}
+            myAssignedTasks={myAssignedTasks}
+            myPersonalTasks={myPersonalTasks}
             weekStartDate={weekStartDate}
             validatorLabel="l'Administrateur"
             hideWeekNav

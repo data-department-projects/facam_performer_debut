@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { httpUrlSchema } from "./url";
 
 export const createPlannerSchema = z.object({
   weekStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format attendu : YYYY-MM-DD"),
@@ -15,7 +16,12 @@ export const addTaskSchema = z.object({
   title: z.string().min(1, "Le titre est obligatoire").max(255),
   plannedDay: z.enum(["MON", "TUE", "WED", "THU", "FRI"]),
   projectId: z.string().uuid().nullable().optional(),
-});
+  assignedTaskId: z.string().uuid().nullable().optional(),
+  personalTaskId: z.string().uuid().nullable().optional(),
+}).refine(
+  (data) => [data.projectId, data.assignedTaskId, data.personalTaskId].filter(Boolean).length <= 1,
+  { message: "Une tâche ne peut avoir qu'une seule source (projet, tâche attribuée ou tâche personnelle)", path: ["projectId"] },
+);
 
 export const deleteTaskSchema = z.object({
   taskId: z.string().uuid(),
@@ -34,10 +40,17 @@ export const updateTaskExecutionSchema = z.object({
   status: z.enum(["STARTED", "IN_PROGRESS", "DONE", "NOT_DONE"]),
   hoursSpent: z.union([z.null(), z.number().min(0).max(24)]),
   comment: z.string(),
+  deliverableUrl: httpUrlSchema.optional().or(z.literal("")),
 }).refine(
   (data) => data.status !== "NOT_DONE" || data.comment.trim().length > 0,
   { message: "Un commentaire est obligatoire quand le statut est 'Non terminé'", path: ["comment"] },
 );
 
+export const addUnplannedTaskSchema = z.object({
+  title: z.string().min(2, "Le titre doit contenir au moins 2 caractères").max(255),
+  deliverableUrl: httpUrlSchema.optional().or(z.literal("")),
+});
+
 export type CreatePlannerInput = z.infer<typeof createPlannerSchema>;
 export type AddTaskInput = z.infer<typeof addTaskSchema>;
+export type AddUnplannedTaskInput = z.infer<typeof addUnplannedTaskSchema>;

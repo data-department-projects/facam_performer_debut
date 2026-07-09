@@ -55,8 +55,10 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 6 — Suivi ETP & Temps de travail
 
-- [x] 23 Suivi ETP & Temps — UI complète (2026-06-22) — EtpPageView (filtre + KPIs + barres charge), EtpConsolidationTable (3 onglets), EtpExportButtons, page Admin-only
-- [x] 24 Suivi ETP & Temps — Logique (2026-06-22) — getEtpData Prisma, rowsToCsv, PDF @react-pdf, routes export, filtre période par URL searchParam
+**Module supprimé le 2026-07-08** (décision client — cf. section Décisions) : `app/etp-tracking/`, `components/etp/`, `lib/reports/`, `app/api/reports/etp/` retirés du code, plus aucune trace dans `Sidebar.tsx`/`proxy.ts`. Les entrées ci-dessous sont conservées pour l'historique du build, mais ce module n'existe plus dans le code actuel.
+
+- [x] ~~23 Suivi ETP & Temps — UI complète (2026-06-22) — EtpPageView (filtre + KPIs + barres charge), EtpConsolidationTable (3 onglets), EtpExportButtons, page Admin-only~~
+- [x] ~~24 Suivi ETP & Temps — Logique (2026-06-22) — getEtpData Prisma, rowsToCsv, PDF @react-pdf, routes export, filtre période par URL searchParam~~
 
 ### Phase 7 — Objectifs
 
@@ -94,7 +96,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - **Premier cas d'usage du canal push** : rappel de réunion de comité, envoyé par un cron horaire (`/api/cron/meeting-reminder`) aux Participants et Invités d'une réunion à venir dans les 24h. `CommitteeMeeting.reminderSentAt` empêche les doublons même en cas d'échec partiel d'envoi.
 - **Verrouillage de semaine (Règle 8)** implémenté via `prisma.$transaction` — la validation du Week Planner et le verrouillage des tâches associées doivent réussir ou échouer ensemble.
 - **Visibilité conditionnelle des tâches du jour (Règle 9)** — les tâches n'apparaissent dans l'exécution quotidienne qu'après validation du Week Planner de la semaine par le Manager, jamais avant.
-- **Export Suivi ETP** en PDF via `@react-pdf/renderer` et en CSV via génération native — réservés au rôle Administrateur.
+- ~~**Export Suivi ETP** en PDF via `@react-pdf/renderer` et en CSV via génération native — réservés au rôle Administrateur.~~ **Module ETP entièrement supprimé (2026-07-08)**, décision client — retiré de la navigation Admin et de tout le code (voir note Phase 6 ci-dessus).
 - **Objectifs restructurés en Objectif + Résultats clés (KeyResult)** : un `Objective` a un `type` (PERFORMANCE / SKILLS_DEVELOPMENT), une liste de `risks` saisie à la création, et un ou plusieurs `KeyResult` mesurables (description, valeur cible, valeur atteinte, preuve textuelle, date limite, statut). Le statut de chaque résultat clé est mis à jour par le Collaborateur propriétaire pour montrer l'avancement réel. La preuve de type certificat (objectifs de compétences) est un lien externe (`KeyResult.certificateUrl`) — décision client du 2026-07-02, remplace l'ancien upload de fichier vers S3 via `Attachment` : on ne stocke jamais le fichier, uniquement l'URL fournie par le Collaborateur.
 - **Jalons de projet enrichis** (2026-07-02) : `ProjectMilestone` porte désormais un `responsibleUserId` (optionnel, FK User — le responsable de la livraison du jalon, choisi parmi le Chef de Projet + l'équipe projet) et un `status` (`MilestoneStatus` : PENDING / IN_PROGRESS / DONE / DELAYED, défaut `PENDING`). Passer `status` à `DONE` renseigne automatiquement `achievedDate = now()` côté serveur. Le champ "Projet" n'a volontairement pas été ajouté au formulaire de création (le jalon est déjà créé depuis la page du projet concerné — champ jugé redondant par le client).
 - **Réinitialisation de mot de passe par OTP** (code à 6 chiffres, expiration 10 minutes, usage unique) remplace le lien envoyé par email — `PasswordResetToken` renommé `PasswordResetOtp`. Toute nouvelle demande invalide les codes précédents non utilisés du même utilisateur.

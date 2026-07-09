@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { X, Calendar, ChevronRight, AlertCircle } from "lucide-react";
 import { updateGanttTaskStatus } from "@/actions/ganttTasks";
+import { isGanttTaskOverdue } from "@/lib/overdue";
 import type { GanttTaskData, GanttTeamMember } from "@/components/projects/ProjectGanttView";
 
 // ── Statuts ────────────────────────────────────────────────────────────────────
@@ -307,12 +308,15 @@ type TaskCardProps = {
 function TaskCard({ task, teamMembers, onClick }: TaskCardProps) {
   const responsible = teamMembers.find((m) => m.id === task.responsibleUserId);
   const statusCfg = STATUSES.find((s) => s.id === (task.status as TaskStatus))!;
+  const overdue = isGanttTaskOverdue({ endDate: task.endDate, status: task.status as TaskStatus });
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group w-full rounded-lg border border-gray200 bg-facamWhite p-3 text-left shadow-sm hover:border-facamBlue hover:shadow-md transition-all"
+      className={`group w-full rounded-lg border p-3 text-left shadow-sm transition-all hover:shadow-md ${
+        overdue ? "border-error/50 bg-errorLight/40 hover:border-error" : "border-gray200 bg-facamWhite hover:border-facamBlue"
+      }`}
     >
       {/* Titre */}
       <p className="text-xs font-semibold text-facamDark line-clamp-2 leading-snug group-hover:text-facamBlue transition-colors">
@@ -320,9 +324,10 @@ function TaskCard({ task, teamMembers, onClick }: TaskCardProps) {
       </p>
 
       {/* Date */}
-      <p className="mt-2 flex items-center gap-1 text-[10px] text-gray400">
+      <p className={`mt-2 flex items-center gap-1 text-[10px] ${overdue ? "font-semibold text-error" : "text-gray400"}`}>
         <Calendar size={10} />
         {formatDate(task.startDate)} — {formatDate(task.endDate)}
+        {overdue ? " (en retard)" : ""}
       </p>
 
       {/* Barre de progression */}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckCircle2, Clock, Loader2 } from "lucide-react";
 import type { MockAction } from "@/app/committees/_mock-data";
 import { updateCommitteeActionStatus } from "@/actions/committees";
+import { isCommitteeActionOverdue } from "@/lib/overdue";
 import type { CommitteeActionStatus } from "@/app/generated/prisma/client";
 
 type Props = {
@@ -40,14 +41,16 @@ export function CommitteeActionsList({ actions, canManage }: Props) {
         <p className="rounded-md bg-errorLight px-3 py-2 text-xs text-error">{toggleError}</p>
       )}
       <div className="flex flex-col divide-y divide-gray200">
-        {actions.map((action) => (
+        {actions.map((action) => {
+          const overdue = isCommitteeActionOverdue(action);
+          return (
           <div key={action.id} className="flex items-start gap-3 py-3">
             {/* Statut icône */}
             <div className="mt-0.5 flex-shrink-0">
               {action.status === "DONE" ? (
                 <CheckCircle2 size={15} className="text-success" />
               ) : (
-                <Clock size={15} className="text-warning" />
+                <Clock size={15} className={overdue ? "text-error" : "text-warning"} />
               )}
             </div>
 
@@ -60,13 +63,14 @@ export function CommitteeActionsList({ actions, canManage }: Props) {
               >
                 {action.title}
               </p>
-              <p className="mt-0.5 text-xs text-gray400">
+              <p className={`mt-0.5 text-xs ${overdue ? "font-medium text-error" : "text-gray400"}`}>
                 {action.responsible} · Échéance{" "}
                 {new Date(action.dueDate + "T00:00:00").toLocaleDateString("fr-FR", {
                   day: "2-digit",
                   month: "short",
                   year: "numeric",
                 })}
+                {overdue ? " — en retard" : ""}
               </p>
             </div>
 
@@ -78,25 +82,30 @@ export function CommitteeActionsList({ actions, canManage }: Props) {
                 className={`inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-75 disabled:opacity-50 ${
                   action.status === "DONE"
                     ? "bg-successLight text-success"
-                    : "bg-warningLight text-warning"
+                    : overdue
+                      ? "bg-errorLight text-error"
+                      : "bg-warningLight text-warning"
                 }`}
               >
                 {pendingId === action.id && <Loader2 size={10} className="animate-spin" />}
-                {action.status === "DONE" ? "Réalisée" : "En attente"}
+                {action.status === "DONE" ? "Réalisée" : overdue ? "En retard" : "En attente"}
               </button>
             ) : (
               <span
                 className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                   action.status === "DONE"
                     ? "bg-successLight text-success"
-                    : "bg-warningLight text-warning"
+                    : overdue
+                      ? "bg-errorLight text-error"
+                      : "bg-warningLight text-warning"
                 }`}
               >
-                {action.status === "DONE" ? "Réalisée" : "En attente"}
+                {action.status === "DONE" ? "Réalisée" : overdue ? "En retard" : "En attente"}
               </span>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

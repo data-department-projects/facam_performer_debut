@@ -71,6 +71,7 @@ enum BeneficiaryType {
 
 enum CommitteeFrequency {
   WEEKLY
+  SEMI_MONTHLY
   BIMONTHLY
   MONTHLY
   QUARTERLY
@@ -232,30 +233,33 @@ model User {
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
-  department             Department          @relation(fields: [departmentId], references: [id])
-  responsibleDepartments Department[]        @relation("DepartmentResponsable")
-  team                   Team?               @relation("TeamMembers", fields: [teamId], references: [id])
-  managedTeams           Team[]              @relation("TeamManager")
-  passwordResetOtps      PasswordResetOtp[]
-  pushSubscriptions      PushSubscription[]
-  sponsoredProjects      Project[]           @relation("ProjectSponsor")
-  managedProjects        Project[]           @relation("ProjectManager")
-  createdProjects        Project[]           @relation("ProjectCreatedBy")
-  confirmedProjects      Project[]           @relation("ProjectConfirmer")
-  projectMemberships     ProjectTeamMember[]
-  ganttTasks             GanttTask[]
-  managedCommittees      Committee[]         @relation("CommitteeResponsible")
-  createdCommittees      Committee[]         @relation("CommitteeCreatedBy")
-  committeeMemberships   CommitteeMember[]
-  assignedActions        CommitteeAction[]
-  weekPlanners           WeekPlanner[]
-  validatedWeekPlanners  WeekPlanner[]       @relation("WeekPlannerValidator")
-  timeEntries            TimeEntry[]
-  objectives             Objective[]
-  projectExpenses        ProjectExpense[]    @relation("ExpenseCreator")
-  bugReports             BugReport[]
-  attachments            Attachment[]
-  responsibleMilestones  ProjectMilestone[]
+  department              Department             @relation(fields: [departmentId], references: [id])
+  responsibleDepartments  Department[]           @relation("DepartmentResponsable")
+  team                    Team?                  @relation("TeamMembers", fields: [teamId], references: [id])
+  managedTeams            Team[]                 @relation("TeamManager")
+  passwordResetOtps       PasswordResetOtp[]
+  pushSubscriptions       PushSubscription[]
+  sponsoredProjects       Project[]              @relation("ProjectSponsor")
+  managedProjects         Project[]              @relation("ProjectManager")
+  createdProjects         Project[]              @relation("ProjectCreatedBy")
+  confirmedProjects       Project[]              @relation("ProjectConfirmer")
+  projectMemberships      ProjectTeamMember[]
+  ganttTasks              GanttTask[]
+  managedCommittees       Committee[]            @relation("CommitteeResponsible")
+  createdCommittees       Committee[]            @relation("CommitteeCreatedBy")
+  committeeMemberships    CommitteeMember[]
+  assignedActions         CommitteeAction[]
+  createdAssignedTasks    AssignedTask[]         @relation("AssignedTaskCreatedBy")
+  assignedTaskAssignments AssignedTaskAssignee[]
+  personalTasks           PersonalTask[]
+  weekPlanners            WeekPlanner[]
+  validatedWeekPlanners   WeekPlanner[]          @relation("WeekPlannerValidator")
+  timeEntries             TimeEntry[]
+  objectives              Objective[]
+  projectExpenses         ProjectExpense[]       @relation("ExpenseCreator")
+  bugReports              BugReport[]
+  attachments             Attachment[]
+  responsibleMilestones   ProjectMilestone[]
 
   @@index([departmentId])
   @@index([teamId])
@@ -333,7 +337,7 @@ model Project {
   ganttTasks            GanttTask[]
   weekPlannerTasks      WeekPlannerTask[]
   expenses              ProjectExpense[]
-  committees            Committee[]
+  committees            CommitteeProject[]
 
   @@index([projectManagerId])
   @@index([createdByUserId])
@@ -390,17 +394,18 @@ model ProjectMilestone {
 }
 
 model GanttTask {
-  id                String          @id @default(uuid())
-  projectId         String
-  title             String
-  startDate         DateTime
-  endDate           DateTime
-  progressPercent   Int             @default(0)
-  status            GanttTaskStatus @default(TODO)
-  dependsOnIds      String[]
-  responsibleUserId String
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id                     String          @id @default(uuid())
+  projectId              String
+  title                  String
+  startDate              DateTime
+  endDate                DateTime
+  progressPercent        Int             @default(0)
+  status                 GanttTaskStatus @default(TODO)
+  dependsOnIds           String[]
+  responsibleUserId      String
+  lastOverdueReminderAt  DateTime?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
 
   project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   responsible User    @relation(fields: [responsibleUserId], references: [id])
@@ -421,19 +426,30 @@ model Committee {
   createdByUserId   String
   objectives        String
   frequency         CommitteeFrequency
-  projectId         String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
   responsible User                  @relation("CommitteeResponsible", fields: [responsibleUserId], references: [id])
   createdBy   User                  @relation("CommitteeCreatedBy", fields: [createdByUserId], references: [id])
-  project     Project?              @relation(fields: [projectId], references: [id])
+  projects    CommitteeProject[]
   departments CommitteeDepartment[]
   members     CommitteeMember[]
   meetings    CommitteeMeeting[]
 
   @@index([responsibleUserId])
   @@index([createdByUserId])
+}
+
+model CommitteeProject {
+  id          String @id @default(uuid())
+  committeeId String
+  projectId   String
+
+  committee Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  project   Project   @relation(fields: [projectId], references: [id])
+
+  @@unique([committeeId, projectId])
+  @@index([committeeId])
   @@index([projectId])
 }
 
@@ -481,13 +497,14 @@ model CommitteeMeeting {
 }
 
 model CommitteeAction {
-  id                String                @id @default(uuid())
-  meetingId         String
-  title             String
-  responsibleUserId String
-  dueDate           DateTime
-  status            CommitteeActionStatus @default(PENDING)
-  createdAt         DateTime              @default(now())
+  id                     String                @id @default(uuid())
+  meetingId              String
+  title                  String
+  responsibleUserId      String
+  dueDate                DateTime
+  status                 CommitteeActionStatus @default(PENDING)
+  lastOverdueReminderAt  DateTime?
+  createdAt              DateTime              @default(now())
 
   meeting     CommitteeMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   responsible User             @relation(fields: [responsibleUserId], references: [id])
@@ -520,23 +537,72 @@ model WeekPlanner {
 }
 
 model WeekPlannerTask {
-  id            String     @id @default(uuid())
-  weekPlannerId String
-  projectId     String?
-  title         String
-  plannedDay    PlannedDay
-  status        TaskStatus @default(STARTED)
-  comment       String?
-  isLocked      Boolean    @default(false)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id             String     @id @default(uuid())
+  weekPlannerId  String
+  projectId      String?
+  assignedTaskId String?
+  personalTaskId String?
+  title          String
+  plannedDay     PlannedDay
+  status         TaskStatus @default(STARTED)
+  comment        String?
+  deliverableUrl String?
+  isLocked       Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  weekPlanner WeekPlanner @relation(fields: [weekPlannerId], references: [id], onDelete: Cascade)
-  project     Project?    @relation(fields: [projectId], references: [id])
-  timeEntries TimeEntry[]
+  weekPlanner  WeekPlanner   @relation(fields: [weekPlannerId], references: [id], onDelete: Cascade)
+  project      Project?      @relation(fields: [projectId], references: [id])
+  assignedTask AssignedTask? @relation(fields: [assignedTaskId], references: [id])
+  personalTask PersonalTask? @relation(fields: [personalTaskId], references: [id])
+  timeEntries  TimeEntry[]
 
   @@index([weekPlannerId])
   @@index([projectId])
+  @@index([assignedTaskId])
+  @@index([personalTaskId])
+}
+
+model AssignedTask {
+  id              String   @id @default(uuid())
+  title           String
+  description     String?
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  createdBy        User                   @relation("AssignedTaskCreatedBy", fields: [createdByUserId], references: [id])
+  assignees        AssignedTaskAssignee[]
+  weekPlannerTasks WeekPlannerTask[]
+
+  @@index([createdByUserId])
+}
+
+model PersonalTask {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekPlannerTasks WeekPlannerTask[]
+
+  @@index([userId])
+}
+
+model AssignedTaskAssignee {
+  id             String @id @default(uuid())
+  assignedTaskId String
+  userId         String
+
+  assignedTask AssignedTask @relation(fields: [assignedTaskId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([assignedTaskId, userId])
+  @@index([assignedTaskId])
+  @@index([userId])
 }
 
 model TimeEntry {

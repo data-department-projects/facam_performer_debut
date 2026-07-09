@@ -8,6 +8,7 @@ export type WeekTask = {
   plannedDay: PlannedDay;
   status: TaskStatus;
   comment: string | null;
+  deliverableUrl: string | null;
   isLocked: boolean;
   project: { id: string; name: string; code: string } | null;
 };

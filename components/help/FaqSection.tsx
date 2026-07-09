@@ -13,11 +13,6 @@ const FAQ_BY_ROLE: Record<string, FaqItem[]> = {
         "Dans le module Projets, les projets en attente de confirmation sont identifiés par le badge « À confirmer ». Ouvrez la fiche projet et utilisez le panneau de confirmation en bas de page pour valider ou ajouter une note.",
     },
     {
-      question: "Comment exporter les données ETP et temps ?",
-      answer:
-        "Dans Suivi ETP & Temps, filtrez la période souhaitée (semaine / mois / trimestre), puis utilisez les boutons « Exporter CSV » ou « Exporter PDF » en haut à droite. Ces exports sont réservés au rôle Administrateur.",
-    },
-    {
       question: "Comment gérer les rôles et les départements ?",
       answer:
         "L'organigramme (menu Organigramme) permet de créer et modifier les Départements, Sous-départements et Équipes. La matrice de permissions est accessible dans Administration → Permissions.",

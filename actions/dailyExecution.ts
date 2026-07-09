@@ -3,17 +3,61 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { updateTaskExecutionSchema } from "@/lib/schemas/weekPlanner";
+import {
+  updateTaskExecutionSchema,
+  addUnplannedTaskSchema,
+} from "@/lib/schemas/weekPlanner";
+import type { PlannedDay } from "@/app/generated/prisma/client";
 
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string };
+
+function getCurrentWeekMondayUTC(): Date {
+  const now = new Date();
+  const day = now.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diff));
+}
+
+// Renvoie null le week-end : aucune tâche du jour / saisie possible hors jours ouvrés.
+function getTodayPlannedDay(): PlannedDay | null {
+  const map: Record<number, PlannedDay | null> = {
+    0: null,
+    1: "MON",
+    2: "TUE",
+    3: "WED",
+    4: "THU",
+    5: "FRI",
+    6: null,
+  };
+  return map[new Date().getUTCDay()];
+}
+
+// Règle 9 : l'exécution quotidienne (tâche du jour, tâche non planifiée) n'est
+// possible que sur la semaine en cours déjà validée par l'Administrateur.
+async function requireValidatedCurrentWeekPlanner(
+  userId: string,
+): Promise<{ id: string } | { error: string }> {
+  const weekPlanner = await prisma.weekPlanner.findUnique({
+    where: {
+      userId_weekStartDate: { userId, weekStartDate: getCurrentWeekMondayUTC() },
+    },
+    select: { id: true, status: true },
+  });
+  if (!weekPlanner) return { error: "Aucun planning de semaine en cours." };
+  if (weekPlanner.status !== "VALIDATED") {
+    return { error: "La semaine n'est pas encore validée." };
+  }
+  return { id: weekPlanner.id };
+}
 
 export async function updateTaskExecution(input: {
   taskId: string;
   status: "STARTED" | "IN_PROGRESS" | "DONE" | "NOT_DONE";
   hoursSpent: number | null;
   comment: string;
+  deliverableUrl?: string;
 }): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Non authentifié" };
@@ -26,7 +70,7 @@ export async function updateTaskExecution(input: {
   const parsed = updateTaskExecutionSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
-  const { taskId, status, hoursSpent, comment } = parsed.data;
+  const { taskId, status, hoursSpent, comment, deliverableUrl } = parsed.data;
 
   try {
     const task = await prisma.weekPlannerTask.findUnique({
@@ -50,7 +94,11 @@ export async function updateTaskExecution(input: {
     await prisma.$transaction(async (tx) => {
       await tx.weekPlannerTask.update({
         where: { id: taskId },
-        data: { status, comment: comment.trim() || null },
+        data: {
+          status,
+          comment: comment.trim() || null,
+          deliverableUrl: deliverableUrl || null,
+        },
       });
 
       if (hoursSpent !== null) {
@@ -111,5 +159,102 @@ export async function updateTaskExecution(input: {
   } catch (error) {
     console.error("[updateTaskExecution]", error);
     return { success: false, error: "Impossible de sauvegarder l'exécution" };
+  }
+}
+
+// Le collaborateur choisit, parmi les tâches indépendantes qui lui sont assignées,
+// celle sur laquelle il travaille aujourd'hui — crée une WeekPlannerTask du jour liée.
+// Comme le reste de l'exécution quotidienne (Règle 9), n'est possible que sur une
+// semaine déjà validée — jamais sur une semaine en brouillon ou en attente de validation.
+export async function setTaskOfTheDay(
+  assignedTaskId: string,
+): Promise<ActionResult<{ weekPlannerTaskId: string }>> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Non authentifié" };
+  if (session.user.role !== "COLLABORATOR" && session.user.role !== "INTERN") {
+    return { success: false, error: "Accès non autorisé" };
+  }
+
+  const today = getTodayPlannedDay();
+  if (!today) return { success: false, error: "Pas de tâche du jour le week-end." };
+
+  try {
+    const assignment = await prisma.assignedTaskAssignee.findFirst({
+      where: { assignedTaskId, userId: session.user.id },
+      select: { assignedTask: { select: { title: true } } },
+    });
+    if (!assignment) return { success: false, error: "Cette tâche ne vous est pas assignée." };
+
+    const weekPlanner = await requireValidatedCurrentWeekPlanner(session.user.id);
+    if ("error" in weekPlanner) return { success: false, error: weekPlanner.error };
+
+    const alreadyAdded = await prisma.weekPlannerTask.findFirst({
+      where: { weekPlannerId: weekPlanner.id, assignedTaskId },
+      select: { id: true },
+    });
+    if (alreadyAdded) {
+      return { success: false, error: "Cette tâche a déjà été ajoutée à votre planning cette semaine." };
+    }
+
+    const task = await prisma.weekPlannerTask.create({
+      data: {
+        weekPlannerId: weekPlanner.id,
+        assignedTaskId,
+        title: assignment.assignedTask.title,
+        plannedDay: today,
+        status: "STARTED",
+        isLocked: true,
+      },
+      select: { id: true },
+    });
+
+    revalidatePath("/week-planner");
+    return { success: true, data: { weekPlannerTaskId: task.id } };
+  } catch (error) {
+    console.error("[dailyExecution] setTaskOfTheDay", error);
+    return { success: false, error: "Impossible de définir la tâche du jour." };
+  }
+}
+
+// Permet au collaborateur de renseigner une tâche réalisée dans la journée mais non
+// planifiée à l'avance (ni projet, ni tâche assignée) — comme le reste de l'exécution
+// quotidienne (Règle 9), uniquement sur une semaine déjà validée ; la tâche est créée
+// directement verrouillée car ce n'est pas une correction du plan, juste un constat.
+export async function addUnplannedCompletedTask(
+  rawInput: unknown,
+): Promise<ActionResult<{ weekPlannerTaskId: string }>> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Non authentifié" };
+  if (session.user.role !== "COLLABORATOR" && session.user.role !== "INTERN") {
+    return { success: false, error: "Accès non autorisé" };
+  }
+
+  const parsed = addUnplannedTaskSchema.safeParse(rawInput);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+
+  const today = getTodayPlannedDay();
+  if (!today) return { success: false, error: "Pas de saisie possible le week-end." };
+
+  try {
+    const weekPlanner = await requireValidatedCurrentWeekPlanner(session.user.id);
+    if ("error" in weekPlanner) return { success: false, error: weekPlanner.error };
+
+    const task = await prisma.weekPlannerTask.create({
+      data: {
+        weekPlannerId: weekPlanner.id,
+        title: parsed.data.title,
+        plannedDay: today,
+        status: "DONE",
+        deliverableUrl: parsed.data.deliverableUrl || null,
+        isLocked: true,
+      },
+      select: { id: true },
+    });
+
+    revalidatePath("/week-planner");
+    return { success: true, data: { weekPlannerTaskId: task.id } };
+  } catch (error) {
+    console.error("[dailyExecution] addUnplannedCompletedTask", error);
+    return { success: false, error: "Impossible d'ajouter la tâche." };
   }
 }

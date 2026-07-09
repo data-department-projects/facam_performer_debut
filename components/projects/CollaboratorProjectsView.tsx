@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ArrowLeft, CalendarDays, CheckCircle2, Clock, User } from "lucide-react";
 import { ProjectTaskKanban } from "@/components/projects/ProjectTaskKanban";
+import { MyAssignedTasksSection, type MyAssignedTask } from "@/components/projects/MyAssignedTasksSection";
+import { MyPersonalTasksSection, type MyPersonalTask } from "@/components/projects/MyPersonalTasksSection";
 
 export type KanbanTask = {
   id: string;
@@ -26,6 +28,8 @@ export type CollaboratorProject = {
 
 type Props = {
   projects: CollaboratorProject[];
+  assignedTasks: MyAssignedTask[];
+  personalTasks: MyPersonalTask[];
 };
 
 const fmt = (d: string) =>
@@ -35,8 +39,11 @@ const fmt = (d: string) =>
     year: "numeric",
   });
 
-export function CollaboratorProjectsView({ projects }: Props) {
+type Tab = "projects" | "tasks" | "personal";
+
+export function CollaboratorProjectsView({ projects, assignedTasks, personalTasks }: Readonly<Props>) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("projects");
 
   const selected = projects.find((p) => p.id === selectedId);
 
@@ -91,8 +98,49 @@ export function CollaboratorProjectsView({ projects }: Props) {
     );
   }
 
+  const tabs: { id: Tab; label: string; count: number }[] = [
+    { id: "projects", label: "Mes Projets", count: projects.length },
+    { id: "tasks", label: "Mes tâches assignées", count: assignedTasks.length },
+    { id: "personal", label: "Mes tâches personnelles", count: personalTasks.length },
+  ];
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Onglets */}
+      <div className="flex gap-1 rounded-xl border border-gray200 bg-facamWhite p-1 shadow-sm w-fit">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium transition-colors ${
+              activeTab === tab.id
+                ? "bg-facamBlue text-facamWhite shadow-sm"
+                : "text-gray500 hover:bg-gray50 hover:text-facamDark"
+            }`}
+          >
+            {tab.label}
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                activeTab === tab.id ? "bg-white/20 text-facamWhite" : "bg-gray100 text-gray500"
+              }`}
+            >
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "tasks" && (
+        <MyAssignedTasksSection tasks={assignedTasks} />
+      )}
+
+      {activeTab === "personal" && (
+        <MyPersonalTasksSection tasks={personalTasks} />
+      )}
+
+      {activeTab === "projects" && (
+        <>
       <div>
         <h2 className="text-base font-semibold text-facamDark">Mes Projets</h2>
         <p className="mt-0.5 text-xs text-gray500">
@@ -171,6 +219,8 @@ export function CollaboratorProjectsView({ projects }: Props) {
             );
           })}
         </div>
+      )}
+        </>
       )}
     </div>
   );
