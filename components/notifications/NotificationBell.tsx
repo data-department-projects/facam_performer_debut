@@ -27,13 +27,13 @@ function Section({
   tone,
   items,
   onNavigate,
-}: {
+}: Readonly<{
   title: string;
   icon: ComponentType<{ size?: number; className?: string }>;
   tone: Tone;
   items: OutstandingItem[];
   onNavigate: () => void;
-}) {
+}>) {
   if (items.length === 0) return null;
   const classes = TONE_CLASSES[tone];
 

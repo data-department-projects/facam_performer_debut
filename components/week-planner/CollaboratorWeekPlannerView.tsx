@@ -166,31 +166,27 @@ export function CollaboratorWeekPlannerView({
     });
   }
 
-  function handleAddUnplannedTask(
+  async function handleAddUnplannedTask(
     title: string,
     deliverableUrl: string,
   ): Promise<{ success: boolean; error?: string }> {
-    return new Promise((resolve) => {
-      startTransition(async () => {
-        const result = await addUnplannedCompletedTask({ title, deliverableUrl: deliverableUrl || undefined });
-        if (result.success) {
-          const newTask: WeekTask = {
-            id: result.data.weekPlannerTaskId,
-            title,
-            plannedDay: activeDay,
-            status: "DONE",
-            comment: null,
-            deliverableUrl: deliverableUrl || null,
-            isLocked: true,
-            project: null,
-          };
-          setPlanner((prev) => ({ ...prev, tasks: [...prev.tasks, newTask] }));
-          resolve({ success: true });
-        } else {
-          resolve({ success: false, error: result.error });
-        }
-      });
-    });
+    const result = await addUnplannedCompletedTask({ title, deliverableUrl: deliverableUrl || undefined });
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    const newTask: WeekTask = {
+      id: result.data.weekPlannerTaskId,
+      title,
+      plannedDay: activeDay,
+      status: "DONE",
+      comment: null,
+      deliverableUrl: deliverableUrl || null,
+      isLocked: true,
+      project: null,
+    };
+    setPlanner((prev) => ({ ...prev, tasks: [...prev.tasks, newTask] }));
+    return { success: true };
   }
 
   function handleDeleteTask(taskId: string) {
