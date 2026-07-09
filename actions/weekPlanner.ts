@@ -53,6 +53,8 @@ export async function addWeekPlannerTask(input: {
   title: string;
   plannedDay: PlannedDay;
   projectId?: string | null;
+  assignedTaskId?: string | null;
+  personalTaskId?: string | null;
 }): Promise<ActionResult<{ id: string; title: string; plannedDay: PlannedDay; status: TaskStatus; comment: string | null; isLocked: boolean; project: { id: string; name: string; code: string } | null }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Non authentifié" };
@@ -70,12 +72,32 @@ export async function addWeekPlannerTask(input: {
     if (planner.userId !== session.user.id) return { success: false, error: "Accès non autorisé" };
     if (planner.status !== "DRAFT") return { success: false, error: "Le planning n'est plus modifiable" };
 
+    if (parsed.data.assignedTaskId) {
+      const assignment = await prisma.assignedTaskAssignee.findFirst({
+        where: { assignedTaskId: parsed.data.assignedTaskId, userId: session.user.id },
+        select: { id: true },
+      });
+      if (!assignment) return { success: false, error: "Cette tâche ne vous est pas assignée." };
+    }
+
+    if (parsed.data.personalTaskId) {
+      const personalTask = await prisma.personalTask.findUnique({
+        where: { id: parsed.data.personalTaskId },
+        select: { userId: true },
+      });
+      if (!personalTask || personalTask.userId !== session.user.id) {
+        return { success: false, error: "Cette tâche personnelle n'existe pas." };
+      }
+    }
+
     const task = await prisma.weekPlannerTask.create({
       data: {
         weekPlannerId: parsed.data.plannerId,
         title: parsed.data.title,
         plannedDay: parsed.data.plannedDay,
         projectId: parsed.data.projectId ?? null,
+        assignedTaskId: parsed.data.assignedTaskId ?? null,
+        personalTaskId: parsed.data.personalTaskId ?? null,
         status: "STARTED",
       },
       select: {

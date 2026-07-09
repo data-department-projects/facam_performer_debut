@@ -18,7 +18,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 - [x] 01 Page d'accueil & Connexion — UI (`app/login`, `components/auth/LoginForm.tsx`, `components/layout/Sidebar.tsx`, `TopBar.tsx`)
 - [x] 02 Authentification (email + mot de passe, réinitialisation par OTP) — Logique (`lib/auth.ts`, `actions/auth.ts`, `middleware.ts`, `/api/auth/[...nextauth]`)
-- [x] 03 Service d'emails transactionnels (Resend) — Logique (`lib/email.ts`, 5 templates, 3 routes cron, `vercel.json`)
+- [x] 03 Service d'emails transactionnels (Resend) — Logique (`lib/email.ts`, 5 templates, 4 routes cron déclenchées via cron-job.org — `vercel.json` volontairement vide, voir Décisions)
 - [x] 04 Schéma de base de données — PostgreSQL (`prisma/schema.prisma` — 23 tables, enums, index — migration exécutée 2026-06-17)
 - [x] 05 Stockage S3 & Permissions de base — Logique (`lib/s3-client.ts`, `lib/permissions.ts`)
 - [x] 06 Préférences de Notifications & Infrastructure Push — UI & Logique (`public/sw.js`, `lib/push-client.ts`, `lib/web-push.ts`, `lib/notify.ts`, `/api/push/*`, `NotificationPermissionPrompt.tsx`)
@@ -55,8 +55,10 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 6 — Suivi ETP & Temps de travail
 
-- [x] 23 Suivi ETP & Temps — UI complète (2026-06-22) — EtpPageView (filtre + KPIs + barres charge), EtpConsolidationTable (3 onglets), EtpExportButtons, page Admin-only
-- [x] 24 Suivi ETP & Temps — Logique (2026-06-22) — getEtpData Prisma, rowsToCsv, PDF @react-pdf, routes export, filtre période par URL searchParam
+**Module supprimé le 2026-07-08** (décision client — cf. section Décisions) : `app/etp-tracking/`, `components/etp/`, `lib/reports/`, `app/api/reports/etp/` retirés du code, plus aucune trace dans `Sidebar.tsx`/`proxy.ts`. Les entrées ci-dessous sont conservées pour l'historique du build, mais ce module n'existe plus dans le code actuel.
+
+- [x] ~~23 Suivi ETP & Temps — UI complète (2026-06-22) — EtpPageView (filtre + KPIs + barres charge), EtpConsolidationTable (3 onglets), EtpExportButtons, page Admin-only~~
+- [x] ~~24 Suivi ETP & Temps — Logique (2026-06-22) — getEtpData Prisma, rowsToCsv, PDF @react-pdf, routes export, filtre période par URL searchParam~~
 
 ### Phase 7 — Objectifs
 
@@ -94,12 +96,13 @@ Update this file after every completed feature. Any AI agent reading this should
 - **Premier cas d'usage du canal push** : rappel de réunion de comité, envoyé par un cron horaire (`/api/cron/meeting-reminder`) aux Participants et Invités d'une réunion à venir dans les 24h. `CommitteeMeeting.reminderSentAt` empêche les doublons même en cas d'échec partiel d'envoi.
 - **Verrouillage de semaine (Règle 8)** implémenté via `prisma.$transaction` — la validation du Week Planner et le verrouillage des tâches associées doivent réussir ou échouer ensemble.
 - **Visibilité conditionnelle des tâches du jour (Règle 9)** — les tâches n'apparaissent dans l'exécution quotidienne qu'après validation du Week Planner de la semaine par le Manager, jamais avant.
-- **Export Suivi ETP** en PDF via `@react-pdf/renderer` et en CSV via génération native — réservés au rôle Administrateur.
+- ~~**Export Suivi ETP** en PDF via `@react-pdf/renderer` et en CSV via génération native — réservés au rôle Administrateur.~~ **Module ETP entièrement supprimé (2026-07-08)**, décision client — retiré de la navigation Admin et de tout le code (voir note Phase 6 ci-dessus).
 - **Objectifs restructurés en Objectif + Résultats clés (KeyResult)** : un `Objective` a un `type` (PERFORMANCE / SKILLS_DEVELOPMENT), une liste de `risks` saisie à la création, et un ou plusieurs `KeyResult` mesurables (description, valeur cible, valeur atteinte, preuve textuelle, date limite, statut). Le statut de chaque résultat clé est mis à jour par le Collaborateur propriétaire pour montrer l'avancement réel. La preuve de type certificat (objectifs de compétences) est un lien externe (`KeyResult.certificateUrl`) — décision client du 2026-07-02, remplace l'ancien upload de fichier vers S3 via `Attachment` : on ne stocke jamais le fichier, uniquement l'URL fournie par le Collaborateur.
 - **Jalons de projet enrichis** (2026-07-02) : `ProjectMilestone` porte désormais un `responsibleUserId` (optionnel, FK User — le responsable de la livraison du jalon, choisi parmi le Chef de Projet + l'équipe projet) et un `status` (`MilestoneStatus` : PENDING / IN_PROGRESS / DONE / DELAYED, défaut `PENDING`). Passer `status` à `DONE` renseigne automatiquement `achievedDate = now()` côté serveur. Le champ "Projet" n'a volontairement pas été ajouté au formulaire de création (le jalon est déjà créé depuis la page du projet concerné — champ jugé redondant par le client).
 - **Réinitialisation de mot de passe par OTP** (code à 6 chiffres, expiration 10 minutes, usage unique) remplace le lien envoyé par email — `PasswordResetToken` renommé `PasswordResetOtp`. Toute nouvelle demande invalide les codes précédents non utilisés du même utilisateur.
 - **Création d'utilisateur par l'Admin** : bouton "Générer un mot de passe aléatoire" (côté navigateur, `crypto.getRandomValues`) et bouton "Envoyer les identifiants" sur le même formulaire — ce dernier hash et persiste le mot de passe courant puis envoie le template "credentials" par email, garantissant que l'email envoyé correspond toujours au mot de passe réellement stocké. Le mot de passe en clair ne transite jamais ailleurs que dans cette requête.
 - **Templates "otp-reset" et "credentials"** fournis par le client, toujours envoyés via Resend (email) — jamais via le canal push, quel que soit le consentement notification de l'utilisateur concerné (ce sont des messages de sécurité).
+- **Vercel Cron abandonné au profit de cron-job.org (2026-07-08)**, décision client pour raison de coût (Vercel Cron nécessite un plan payant au-delà de 2 jobs/jour sur le plan Hobby). `vercel.json` reste volontairement vide — les 4 routes `app/api/cron/*` (`daily-reminder`, `weekly-reminder`, `weekly-planner-reminder`, `meeting-reminder`) sont déclenchées en HTTP par des jobs configurés manuellement sur cron-job.org, avec le même header `Authorization: Bearer CRON_SECRET` que prévu initialement. Ne jamais réintroduire de bloc `crons` dans `vercel.json` sans revalider ce choix avec le client.
 
 ---
 

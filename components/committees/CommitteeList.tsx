@@ -3,17 +3,9 @@
 import Link from "next/link";
 import { Plus, Users, TrendingUp, Briefcase } from "lucide-react";
 import type { MockCommittee } from "@/app/committees/_mock-data";
+import { FREQUENCY_LABELS } from "@/lib/committee-frequency";
 
 export type { MockCommittee };
-
-const FREQUENCY_LABELS: Record<MockCommittee["frequency"], string> = {
-  WEEKLY: "Hebdomadaire",
-  BIMONTHLY: "Bimensuel",
-  MONTHLY: "Mensuel",
-  QUARTERLY: "Trimestriel",
-  ANNUAL: "Annuel",
-  AD_HOC: "Ponctuel",
-};
 
 function getTauxRealisation(committee: MockCommittee): number | null {
   const allActions = committee.meetings.flatMap((m) => m.actions);
@@ -84,16 +76,11 @@ export function CommitteeList({ committees, canCreate }: Props) {
                 className="group flex flex-col gap-4 rounded-xl border border-gray200 bg-facamWhite p-6 shadow-sm hover:border-facamBlue hover:shadow-md transition-all"
               >
                 {/* En-tête de carte */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate text-sm font-semibold text-facamDark group-hover:text-facamBlue transition-colors">
-                      {committee.name}
-                    </h3>
-                    <p className="mt-0.5 truncate text-xs text-gray500">{committee.responsible}</p>
-                  </div>
-                  <span className="flex-shrink-0 rounded-full bg-facamBlueTint px-2 py-0.5 text-[10px] font-medium text-facamBlue">
-                    {FREQUENCY_LABELS[committee.frequency]}
-                  </span>
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-semibold text-facamDark group-hover:text-facamBlue transition-colors">
+                    {committee.name}
+                  </h3>
+                  <p className="mt-0.5 truncate text-xs text-gray500">{committee.responsible}</p>
                 </div>
 
                 {/* Description ou objectifs */}
@@ -107,28 +94,36 @@ export function CommitteeList({ committees, canCreate }: Props) {
                     <Users size={12} />
                     {totalMembers} membre{totalMembers > 1 ? "s" : ""}
                   </span>
-                  {committee.projectName && (
+                  {committee.projectNames.length > 0 && (
                     <span className="flex items-center gap-1 text-facamBlue">
                       <Briefcase size={12} />
-                      {committee.projectName}
+                      {committee.projectNames.join(", ")}
                     </span>
                   )}
                 </div>
 
                 {/* Prochaine réunion */}
                 {nextMeeting ? (
-                  <div className="rounded-md bg-facamBlueTint px-3 py-2 text-xs text-facamBlue">
-                    Prochaine réunion :{" "}
-                    <span className="font-medium">
-                      {new Date(nextMeeting.meetingDate + "T00:00:00").toLocaleDateString("fr-FR", {
-                        day: "2-digit",
-                        month: "long",
-                      })}
+                  <div className="flex items-center justify-between gap-2 rounded-md bg-facamBlueTint px-3 py-2 text-xs text-facamBlue">
+                    <span>
+                      Prochaine réunion :{" "}
+                      <span className="font-medium">
+                        {new Date(nextMeeting.meetingDate + "T00:00:00").toLocaleDateString("fr-FR", {
+                          day: "2-digit",
+                          month: "long",
+                        })}
+                      </span>
+                    </span>
+                    <span className="flex-shrink-0 rounded-full bg-facamYellow px-2 py-0.5 text-[10px] font-medium text-facamDark">
+                      {FREQUENCY_LABELS[committee.frequency]}
                     </span>
                   </div>
                 ) : (
-                  <div className="rounded-md bg-gray100 px-3 py-2 text-xs text-gray500">
-                    Aucune réunion planifiée
+                  <div className="flex items-center justify-between gap-2 rounded-md bg-gray100 px-3 py-2 text-xs text-gray500">
+                    <span>Aucune réunion planifiée</span>
+                    <span className="flex-shrink-0 rounded-full bg-facamYellow px-2 py-0.5 text-[10px] font-medium text-facamDark">
+                      {FREQUENCY_LABELS[committee.frequency]}
+                    </span>
                   </div>
                 )}
 

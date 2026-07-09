@@ -18,27 +18,10 @@ import type {
   TodayTeamMemberRow,
 } from "@/components/dashboard/types";
 import { prisma } from "@/lib/prisma";
+import { FREQUENCY_LABELS } from "@/lib/committee-frequency";
 
 // Alias interne — sous-ensemble des filtres UI qui affectent les requêtes DB
 type ActiveFilters = Omit<DashboardActiveFilters, "period">;
-
-export type EtpEntry = {
-  id: string;
-  collaboratorName: string;
-  initials: string;
-  department: string;
-  team: string;
-  activityLabel: string;
-  hoursSpent: number;
-  date: string;
-};
-
-export type TeamCharge = {
-  team: string;
-  department: string;
-  consumedHours: number;
-  availableHours: number;
-};
 
 type PeriodRange = {
   startDate: Date;
@@ -77,14 +60,6 @@ const TASK_STATUS_CONFIG: {
   { status: "NOT_DONE", label: "Non terminé", color: "#b91c1c" },
   { status: "STARTED", label: "Débuté", color: "#d1d5db" },
 ];
-
-const FREQUENCY_LABEL: Record<string, string> = {
-  WEEKLY: "Hebdomadaire",
-  MONTHLY: "Mensuel",
-  QUARTERLY: "Trimestriel",
-  ANNUAL: "Annuel",
-  AD_HOC: "Ponctuel",
-};
 
 function getPeriodRange(period: DashboardPeriod): PeriodRange {
   const now = new Date();
@@ -1114,7 +1089,7 @@ async function getAdminCommitteeRows(): Promise<CommitteeRow[]> {
     return {
       id: c.id,
       name: c.name,
-      frequency: FREQUENCY_LABEL[c.frequency] ?? c.frequency,
+      frequency: FREQUENCY_LABELS[c.frequency],
       totalActions,
       doneActions,
       overdueActions,
@@ -1536,84 +1511,4 @@ export async function getDashboardData(params: {
   if (ctx.role === "ADMIN") return getAdminDashboardData(ctx, range, prevRange, filters);
   if (ctx.role === "MANAGER") return getManagerDashboardData(ctx, range, prevRange, filters);
   return getCollaboratorDashboardData(ctx, range, filters);
-}
-
-export async function getEtpData(period: DashboardPeriod): Promise<{
-  entries: EtpEntry[];
-  teamCharges: TeamCharge[];
-  periodLabel: string;
-}> {
-  const { startDate, endDate, workingDays, label } = getPeriodRange(period);
-
-  const [rawEntries, teams] = await Promise.all([
-    prisma.timeEntry.findMany({
-      where: { date: { gte: startDate, lte: endDate }, user: { isActive: true } },
-      select: {
-        id: true,
-        userId: true,
-        hoursSpent: true,
-        activityLabel: true,
-        date: true,
-        user: {
-          select: {
-            fullName: true,
-            teamId: true,
-            team: {
-              select: {
-                id: true,
-                name: true,
-                subDepartment: { select: { department: { select: { name: true } } } },
-              },
-            },
-          },
-        },
-      },
-    }),
-    prisma.team.findMany({
-      select: {
-        id: true,
-        name: true,
-        subDepartment: { select: { department: { select: { name: true } } } },
-        members: {
-          where: { isActive: true, role: { in: ["COLLABORATOR", "INTERN"] } },
-          select: { id: true },
-        },
-      },
-    }),
-  ]);
-
-  const entries: EtpEntry[] = rawEntries.map((te) => {
-    const parts = te.user.fullName.trim().split(/\s+/);
-    const initials =
-      parts.length >= 2
-        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-        : te.user.fullName.slice(0, 2).toUpperCase();
-
-    return {
-      id: te.id,
-      collaboratorName: te.user.fullName,
-      initials,
-      department: te.user.team?.subDepartment?.department?.name ?? "—",
-      team: te.user.team?.name ?? "—",
-      activityLabel: te.activityLabel,
-      hoursSpent: Number(te.hoursSpent),
-      date: te.date.toISOString().split("T")[0],
-    };
-  });
-
-  const teamCharges: TeamCharge[] = teams
-    .filter((t) => t.members.length > 0)
-    .map((t) => {
-      const consumedHours = rawEntries
-        .filter((te) => te.user.teamId === t.id)
-        .reduce((s, te) => s + Number(te.hoursSpent), 0);
-      return {
-        team: t.name,
-        department: t.subDepartment?.department?.name ?? "—",
-        consumedHours: Math.round(consumedHours * 10) / 10,
-        availableHours: t.members.length * 8 * workingDays,
-      };
-    });
-
-  return { entries, teamCharges, periodLabel: label };
 }

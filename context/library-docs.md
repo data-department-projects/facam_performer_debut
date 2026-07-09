@@ -589,22 +589,18 @@ export async function notifyUser(
 
 ---
 
-## Vercel Cron — Rappels automatiques
+## cron-job.org — Rappels automatiques
 
-**Vérifier d'abord :** AGENTS.md pour un skill Vercel Cron installé. La syntaxe `vercel.json` peut évoluer.
+**Vercel Cron non retenu** (2026-07-08, décision client pour raison de coût — plan Hobby limité à 2 jobs/jour). `vercel.json` reste volontairement vide (`{}`) — ne pas y ajouter de bloc `crons`. Le déclenchement est assuré par des jobs configurés manuellement sur [cron-job.org](https://cron-job.org), chacun appelant l'URL de la route en `GET` avec un en-tête personnalisé `Authorization: Bearer <CRON_SECRET>`.
 
-### Configuration
+### Jobs configurés
 
-```json
-// vercel.json
-{
-  "crons": [
-    { "path": "/api/cron/daily-reminder", "schedule": "0 8 * * 1-5" },
-    { "path": "/api/cron/weekly-reminder", "schedule": "0 15 * * 5" },
-    { "path": "/api/cron/meeting-reminder", "schedule": "0 * * * *" }
-  ]
-}
-```
+| Route | Fréquence | Job cron-job.org |
+| --- | --- | --- |
+| `/api/cron/daily-reminder` | Jours ouvrés, 8h | ✅ |
+| `/api/cron/weekly-reminder` | Vendredi, 15h | ✅ |
+| `/api/cron/weekly-planner-reminder` | Dimanche, 20h (jamais un lundi — le calcul de "prochain lundi" saute alors à la semaine d'après) | ✅ |
+| `/api/cron/meeting-reminder` | Toutes les heures | ✅ |
 
 ### Route protégée
 

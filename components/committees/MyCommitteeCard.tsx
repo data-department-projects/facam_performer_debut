@@ -1,10 +1,11 @@
 import { CalendarDays, Video, Clock } from "lucide-react";
+import { FREQUENCY_LABELS } from "@/lib/committee-frequency";
 
 export type MyCommittee = {
   id: string;
   name: string;
   objectives: string;
-  frequency: "WEEKLY" | "BIMONTHLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "AD_HOC";
+  frequency: "WEEKLY" | "SEMI_MONTHLY" | "BIMONTHLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "AD_HOC";
   nextMeeting: {
     meetingDate: string;
     startTime: string;
@@ -13,17 +14,9 @@ export type MyCommittee = {
   } | null;
 };
 
-const FREQUENCY_LABELS: Record<MyCommittee["frequency"], string> = {
-  WEEKLY: "Hebdomadaire",
-  BIMONTHLY: "Bimensuel",
-  MONTHLY: "Mensuel",
-  QUARTERLY: "Trimestriel",
-  ANNUAL: "Annuel",
-  AD_HOC: "Ad hoc",
-};
-
 const FREQUENCY_COLORS: Record<MyCommittee["frequency"], string> = {
   WEEKLY: "bg-facamBlueTint text-facamBlue",
+  SEMI_MONTHLY: "bg-facamBlueTint text-facamBlue",
   BIMONTHLY: "bg-facamBlueTint text-facamBlue",
   MONTHLY: "bg-successLight text-success",
   QUARTERLY: "bg-warningLight text-warning",

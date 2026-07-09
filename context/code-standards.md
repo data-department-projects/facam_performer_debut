@@ -404,5 +404,6 @@ Dépendances approuvées pour ce projet :
 - `lucide-react` — icônes
 - `tailwindcss` — styling
 - `shadcn/ui` — composants UI primitifs
+- `@radix-ui/react-popover` — centre de notifications (cloche), popover desktop
 
 Aucun autre package ne doit être installé sans mise à jour préalable de cette liste.

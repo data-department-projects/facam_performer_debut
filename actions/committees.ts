@@ -42,7 +42,9 @@ export async function createCommittee(
         createdByUserId: currentUser.id,
         objectives: input.objectives,
         frequency: input.frequency,
-        projectId: input.projectId ?? null,
+        projects: {
+          create: input.projectIds.map((projectId) => ({ projectId })),
+        },
         departments: {
           create: input.departmentIds.map((departmentId) => ({ departmentId })),
         },

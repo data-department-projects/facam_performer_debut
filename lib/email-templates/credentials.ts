@@ -2,6 +2,7 @@ export function renderCredentialsTemplate(data: {
   email: string;
   password: string;
   name: string;
+  loginUrl: string;
 }): string {
   return `
 <!DOCTYPE html>
@@ -46,6 +47,15 @@ export function renderCredentialsTemplate(data: {
               <p style="margin:0 0 16px;color:#4b5563;font-size:14px;line-height:22px;">
                 Connectez-vous sur la plateforme et changez votre mot de passe dès votre première connexion.
               </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+                <tr>
+                  <td style="border-radius:8px;background-color:#001b61;">
+                    <a href="${data.loginUrl}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;">
+                      Se connecter à FACAM PERFORMER
+                    </a>
+                  </td>
+                </tr>
+              </table>
               <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
               <p style="margin:0;color:#9ca3af;font-size:12px;">
                 Si vous n'êtes pas à l'origine de la création de ce compte, contactez votre administrateur.

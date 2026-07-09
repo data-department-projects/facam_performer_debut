@@ -6,15 +6,7 @@ import { CommitteeMeetingCard } from "@/components/committees/CommitteeMeetingCa
 import { CommitteeMeetingFormModal } from "@/components/committees/CommitteeMeetingFormModal";
 import { CommitteeActionFormModal } from "@/components/committees/CommitteeActionFormModal";
 import type { MockCommittee } from "@/app/committees/_mock-data";
-
-const FREQUENCY_LABELS: Record<MockCommittee["frequency"], string> = {
-  WEEKLY: "Hebdomadaire",
-  BIMONTHLY: "Bimensuel",
-  MONTHLY: "Mensuel",
-  QUARTERLY: "Trimestriel",
-  ANNUAL: "Annuel",
-  AD_HOC: "Ponctuel",
-};
+import { FREQUENCY_LABELS } from "@/lib/committee-frequency";
 
 function getTauxRealisation(committee: MockCommittee): number | null {
   const allActions = committee.meetings.flatMap((m) => m.actions);

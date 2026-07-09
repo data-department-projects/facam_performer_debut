@@ -2,10 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { Trash2, Check } from "lucide-react";
-import { AddTaskInline } from "./AddTaskInline";
+import { AddTaskInline, type TaskSource } from "./AddTaskInline";
 import { TaskStatusBadge } from "./TaskStatusBadge";
 import { updateTaskExecution } from "@/actions/dailyExecution";
 import type { WeekTask, ConfirmedProject, AssignedGanttTask, PlannedDay, PlannerStatus, TaskStatus } from "./types";
+
+type SimpleTaskOption = { id: string; title: string };
 
 const DAY_LABELS: Record<PlannedDay, string> = {
   MON: "Lundi",
@@ -22,7 +24,7 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: "NOT_DONE", label: "Non terminé" },
 ];
 
-type TaskExecState = { status: TaskStatus; hours: string; comment: string };
+type TaskExecState = { status: TaskStatus; hours: string; comment: string; deliverableUrl: string };
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const SAVE_BUTTON_STYLES: Record<SaveState, string> = {
@@ -38,20 +40,31 @@ type Props = {
   plannerStatus: PlannerStatus;
   confirmedProjects: ConfirmedProject[];
   assignedGanttTasks?: AssignedGanttTask[];
-  onAddTask: (title: string, projectId: string | null) => void;
+  myAssignedTasks?: SimpleTaskOption[];
+  myPersonalTasks?: SimpleTaskOption[];
+  onAddTask: (title: string, source: TaskSource) => void;
   onDeleteTask: (taskId: string) => void;
+  onAddUnplannedTask?: (
+    title: string,
+    deliverableUrl: string,
+  ) => Promise<{ success: boolean; error?: string }>;
 };
 
-export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, assignedGanttTasks, onAddTask, onDeleteTask }: Props) {
+export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, assignedGanttTasks, myAssignedTasks, myPersonalTasks, onAddTask, onDeleteTask, onAddUnplannedTask }: Readonly<Props>) {
   const [execState, setExecState] = useState<Record<string, TaskExecState>>(() => {
     const init: Record<string, TaskExecState> = {};
     tasks.forEach((t) => {
-      init[t.id] = { status: t.status, hours: "", comment: t.comment ?? "" };
+      init[t.id] = { status: t.status, hours: "", comment: t.comment ?? "", deliverableUrl: t.deliverableUrl ?? "" };
     });
     return init;
   });
   const [saveState, setSaveState] = useState<Record<string, SaveState>>({});
   const [showAdd, setShowAdd] = useState(false);
+  const [showUnplanned, setShowUnplanned] = useState(false);
+  const [unplannedTitle, setUnplannedTitle] = useState("");
+  const [unplannedDeliverable, setUnplannedDeliverable] = useState("");
+  const [unplannedError, setUnplannedError] = useState<string | null>(null);
+  const [unplannedSubmitting, setUnplannedSubmitting] = useState(false);
   const [, startTransition] = useTransition();
 
   const isEditable = plannerStatus === "DRAFT";
@@ -60,7 +73,10 @@ export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, ass
   function updateExec(taskId: string, patch: Partial<TaskExecState>) {
     setExecState((prev) => ({
       ...prev,
-      [taskId]: { ...(prev[taskId] ?? { status: "STARTED", hours: "", comment: "" }), ...patch },
+      [taskId]: {
+        ...(prev[taskId] ?? { status: "STARTED", hours: "", comment: "", deliverableUrl: "" }),
+        ...patch,
+      },
     }));
   }
 
@@ -69,7 +85,7 @@ export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, ass
   }
 
   function handleSave(task: WeekTask) {
-    const state = execState[task.id] ?? { status: task.status, hours: "", comment: task.comment ?? "" };
+    const state = execState[task.id] ?? { status: task.status, hours: "", comment: task.comment ?? "", deliverableUrl: task.deliverableUrl ?? "" };
     setSaveState((prev) => ({ ...prev, [task.id]: "saving" }));
 
     startTransition(async () => {
@@ -78,6 +94,7 @@ export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, ass
         status: state.status,
         hoursSpent: state.hours.trim() === "" ? null : (parseFloat(state.hours) || 0),
         comment: state.comment,
+        deliverableUrl: state.deliverableUrl.trim(),
       });
 
       if (result.success) {
@@ -153,6 +170,16 @@ export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, ass
                 />
               )}
 
+              {state.status === "DONE" && (
+                <input
+                  type="url"
+                  placeholder="Lien du livrable (optionnel)"
+                  value={state.deliverableUrl}
+                  onChange={(e) => updateExec(task.id, { deliverableUrl: e.target.value })}
+                  className="w-full rounded-md border border-gray200 bg-gray50 px-3 py-1.5 text-xs text-facamDark placeholder:text-gray400 focus:border-facamBlue focus:outline-none"
+                />
+              )}
+
               <button
                 onClick={() => handleSave(task)}
                 disabled={!canSave || taskSaveState === "saving"}
@@ -201,8 +228,10 @@ export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, ass
             <AddTaskInline
               confirmedProjects={confirmedProjects}
               assignedGanttTasks={assignedGanttTasks}
-              onAdd={(title, projectId) => {
-                onAddTask(title, projectId);
+              myAssignedTasks={myAssignedTasks}
+              myPersonalTasks={myPersonalTasks}
+              onAdd={(title, source) => {
+                onAddTask(title, source);
                 setShowAdd(false);
               }}
               onCancel={() => setShowAdd(false)}
@@ -213,6 +242,74 @@ export function DayTaskPanel({ day, tasks, plannerStatus, confirmedProjects, ass
               className="w-full rounded-xl border border-dashed border-gray200 py-3 text-xs text-gray400 transition-colors hover:border-facamBlue hover:text-facamBlue"
             >
               + Ajouter une tâche
+            </button>
+          )}
+        </div>
+      )}
+
+      {isExecutable && onAddUnplannedTask && (
+        <div className="mt-1">
+          {showUnplanned ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-gray200 bg-facamWhite p-3 shadow-sm">
+              <input
+                type="text"
+                autoFocus
+                placeholder="Titre de la tâche réalisée…"
+                value={unplannedTitle}
+                onChange={(e) => setUnplannedTitle(e.target.value)}
+                className="w-full rounded-md border border-gray200 bg-gray50 px-3 py-1.5 text-xs text-facamDark placeholder:text-gray400 focus:border-facamBlue focus:outline-none"
+              />
+              <input
+                type="url"
+                placeholder="Lien du livrable (optionnel)"
+                value={unplannedDeliverable}
+                onChange={(e) => setUnplannedDeliverable(e.target.value)}
+                className="w-full rounded-md border border-gray200 bg-gray50 px-3 py-1.5 text-xs text-facamDark placeholder:text-gray400 focus:border-facamBlue focus:outline-none"
+              />
+              {unplannedError && (
+                <p className="rounded-md bg-errorLight px-3 py-2 text-xs text-error">{unplannedError}</p>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setShowUnplanned(false);
+                    setUnplannedTitle("");
+                    setUnplannedDeliverable("");
+                    setUnplannedError(null);
+                  }}
+                  className="rounded-md px-3 py-1.5 text-xs text-gray500 hover:bg-gray50"
+                >
+                  Annuler
+                </button>
+                <button
+                  disabled={unplannedTitle.trim().length < 2 || unplannedSubmitting}
+                  onClick={async () => {
+                    if (!onAddUnplannedTask) return;
+                    setUnplannedError(null);
+                    setUnplannedSubmitting(true);
+                    const result = await onAddUnplannedTask(unplannedTitle.trim(), unplannedDeliverable.trim());
+                    setUnplannedSubmitting(false);
+                    if (result.success) {
+                      setShowUnplanned(false);
+                      setUnplannedTitle("");
+                      setUnplannedDeliverable("");
+                    } else {
+                      setUnplannedError(result.error ?? "Une erreur est survenue.");
+                    }
+                  }}
+                  className="rounded-md bg-facamBlue px-3 py-1.5 text-xs font-semibold text-facamWhite hover:bg-facamDark disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {unplannedSubmitting ? "Ajout…" : "Ajouter"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowUnplanned(true)}
+              className="w-full rounded-xl border border-dashed border-gray200 py-3 text-xs text-gray400 transition-colors hover:border-facamBlue hover:text-facamBlue"
+            >
+              + Renseigner une tâche réalisée non planifiée
             </button>
           )}
         </div>

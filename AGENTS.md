@@ -29,7 +29,7 @@ Internal performance management platform for FACAM STAIRWAY (single entity — n
 | Stockage fichiers | AWS S3 (SDK v3) |
 | Emails | Resend |
 | Notifications push | web-push (VAPID) + Service Worker natif |
-| Tâches planifiées | Vercel Cron |
+| Tâches planifiées | cron-job.org (déclenchement HTTP externe des routes `app/api/cron/*`) |
 | Vue Gantt | gantt-task-react |
 | Import Excel | xlsx + Zod |
 | PDF | @react-pdf/renderer |

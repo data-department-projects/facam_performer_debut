@@ -7,10 +7,9 @@ import type { Role } from "@/app/generated/prisma/client";
 const ADMIN_NAV: NavItem[] = [
   { label: "Tableau de bord", href: "/dashboard", iconName: "LayoutDashboard" },
   { label: "Organigramme", href: "/org-chart", iconName: "GitBranch" },
-  { label: "Projets", href: "/projects", iconName: "FolderKanban" },
+  { label: "Projets et tâches", href: "/projects", iconName: "FolderKanban" },
   { label: "Comités", href: "/committees", iconName: "Building2" },
   { label: "Week Planner", href: "/week-planner", iconName: "CalendarDays" },
-  { label: "Suivi ETP & Temps", href: "/etp-tracking", iconName: "Clock" },
   { label: "Objectifs dép.", href: "/department-objectives", iconName: "Target" },
   { label: "Administration", href: "/admin", iconName: "Users" },
   { label: "Actions à traiter", href: "/actions-to-process", iconName: "CheckSquare" },
@@ -20,7 +19,7 @@ const ADMIN_NAV: NavItem[] = [
 const MANAGER_NAV: NavItem[] = [
   { label: "Tableau de bord", href: "/dashboard", iconName: "LayoutDashboard" },
   { label: "Organigramme", href: "/org-chart", iconName: "GitBranch" },
-  { label: "Projets", href: "/projects", iconName: "FolderKanban" },
+  { label: "Projets et tâches", href: "/projects", iconName: "FolderKanban" },
   { label: "Comités", href: "/committees", iconName: "Building2" },
   { label: "Week Planner", href: "/week-planner", iconName: "CalendarDays" },
   { label: "Objectifs", href: "/objectives", iconName: "Target" },
@@ -32,7 +31,7 @@ const COLLABORATOR_NAV: NavItem[] = [
   { label: "Tableau de bord", href: "/dashboard", iconName: "LayoutDashboard" },
   { label: "Week Planner", href: "/week-planner", iconName: "CalendarDays" },
   { label: "Objectifs", href: "/objectives", iconName: "Target" },
-  { label: "Mes Projets", href: "/projects", iconName: "FolderKanban" },
+  { label: "Mes projets et tâches", href: "/projects", iconName: "FolderKanban" },
   { label: "Mes Comités", href: "/committees", iconName: "Building2" },
   { label: "Guide / Bugs", href: "/help", iconName: "HelpCircle" },
 ];

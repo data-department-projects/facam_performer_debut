@@ -19,11 +19,15 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "managers", label: "Managers" },
 ];
 
+type SimpleTaskOption = { id: string; title: string };
+
 type Props = {
   managers: TeamMember[];
   ownPlanner: WeekPlannerData | null;
   confirmedProjects: ConfirmedProject[];
   assignedGanttTasks?: AssignedGanttTask[];
+  myAssignedTasks?: SimpleTaskOption[];
+  myPersonalTasks?: SimpleTaskOption[];
   weekStartDate: string;
   weekLabel: string;
 };
@@ -33,6 +37,8 @@ export function AdminWeekPlannerView({
   ownPlanner,
   confirmedProjects,
   assignedGanttTasks,
+  myAssignedTasks,
+  myPersonalTasks,
   weekStartDate,
   weekLabel,
 }: Readonly<Props>) {
@@ -75,6 +81,8 @@ export function AdminWeekPlannerView({
             planner={ownPlanner}
             confirmedProjects={confirmedProjects}
             assignedGanttTasks={assignedGanttTasks}
+            myAssignedTasks={myAssignedTasks}
+            myPersonalTasks={myPersonalTasks}
             weekStartDate={weekStartDate}
             noValidation
             hideWeekNav

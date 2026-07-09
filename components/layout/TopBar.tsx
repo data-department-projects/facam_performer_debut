@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Bell, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { signOut } from "@/lib/auth";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 type Props = {
   pageTitle: string;
@@ -14,14 +15,8 @@ export function TopBar({ pageTitle, userName, userRole }: Props) {
       <h1 className="text-base font-semibold text-facamDark">{pageTitle}</h1>
 
       <div className="flex items-center gap-3">
-        {/* Notifications (placeholder Phase 6) */}
-        <button
-          type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray500 hover:bg-gray50 hover:text-facamBlue"
-          aria-label="Notifications"
-        >
-          <Bell size={18} />
-        </button>
+        {/* Centre de notifications */}
+        <NotificationBell />
 
         {/* Profil */}
         <Link

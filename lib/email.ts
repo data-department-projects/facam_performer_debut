@@ -1,9 +1,9 @@
 import { Resend } from "resend";
 import { renderOtpResetTemplate } from "@/lib/email-templates/otp-reset";
 import { renderCredentialsTemplate } from "@/lib/email-templates/credentials";
-import { renderDailyReminderTemplate } from "@/lib/email-templates/daily-reminder";
 import { renderWeeklyReminderTemplate } from "@/lib/email-templates/weekly-reminder";
 import { renderMeetingReminderTemplate } from "@/lib/email-templates/meeting-reminder";
+import { renderOverdueTaskReminderTemplate } from "@/lib/email-templates/overdue-task-reminder";
 
 function getResendClient() {
   const key = process.env.RESEND_API_KEY;
@@ -16,9 +16,9 @@ const FROM = "FACAM PERFORMER <notifications@facamstairwaytogo.com>";
 export type EmailTemplate =
   | "otp-reset"
   | "credentials"
-  | "daily-reminder"
   | "weekly-reminder"
   | "meeting-reminder"
+  | "overdue-task-reminder"
   | "bug-report";
 
 function subjectFor(template: EmailTemplate): string {
@@ -27,12 +27,12 @@ function subjectFor(template: EmailTemplate): string {
       return "Réinitialisation de votre mot de passe — FACAM PERFORMER";
     case "credentials":
       return "Vos identifiants de connexion — FACAM PERFORMER";
-    case "daily-reminder":
-      return "Rappel : mettez à jour vos tâches du jour";
     case "weekly-reminder":
       return "Planifiez votre semaine prochaine — FACAM PERFORMER";
     case "meeting-reminder":
       return "Rappel de réunion demain — FACAM PERFORMER";
+    case "overdue-task-reminder":
+      return "Échéance dépassée — FACAM PERFORMER";
     case "bug-report":
       return "Nouveau bug signalé — FACAM PERFORMER";
   }
@@ -54,9 +54,8 @@ function renderTemplate(
         email: data.email ?? "",
         password: data.password ?? "",
         name: data.name ?? "",
+        loginUrl: data.loginUrl ?? `${process.env.NEXTAUTH_URL ?? ""}/login`,
       });
-    case "daily-reminder":
-      return renderDailyReminderTemplate({ name: data.name ?? "" });
     case "weekly-reminder":
       return renderWeeklyReminderTemplate({ name: data.name ?? "" });
     case "meeting-reminder":
@@ -66,6 +65,15 @@ function renderTemplate(
         meetingDate: data.meetingDate ?? "",
         meetingTime: data.meetingTime ?? "",
         meetingLink: data.meetingLink,
+      });
+    case "overdue-task-reminder":
+      return renderOverdueTaskReminderTemplate({
+        name: data.name ?? "",
+        itemTitle: data.itemTitle ?? "",
+        itemType: data.itemType ?? "",
+        context: data.context ?? "",
+        overdueDays: data.overdueDays ?? "0",
+        link: data.link ?? (process.env.NEXTAUTH_URL ?? ""),
       });
     case "bug-report":
       return `<!DOCTYPE html><html><body style="font-family:sans-serif;color:#1a1a1a;padding:24px">
