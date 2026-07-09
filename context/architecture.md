@@ -10,7 +10,7 @@
 | Hashage mot de passe | bcrypt | Stockage sécurisé des mots de passe |
 | Stockage fichiers | AWS S3 (SDK v3) | Justificatifs, livrables, archives d'import Gantt |
 | Emails transactionnels | Resend | Réinitialisation MDP, rappels quotidiens/hebdomadaires |
-| Tâches planifiées | Vercel Cron | Déclenchement des rappels automatiques |
+| Tâches planifiées | cron-job.org | Déclenchement HTTP externe des routes `app/api/cron/*` (2026-07-08 : remplace Vercel Cron, non retenu pour raison de coût — voir Décisions) |
 | Notifications Push | web-push (VAPID) + Service Worker natif | Notifications desktop façon WhatsApp Web, alternative à l'email sur consentement |
 | Vue Gantt | gantt-task-react | Rendu interactif de la planification de projet |
 | Import planning | xlsx + Zod | Lecture et validation du template Excel Gantt |
@@ -241,11 +241,11 @@ Tâches du jour visibles dans l'exécution quotidienne (jamais avant)
 Toute correction nécessite une nouvelle planification — jamais d'édition de la semaine validée
 ```
 
-### Rappels Automatiques (Vercel Cron)
+### Rappels Automatiques (cron-job.org)
 
 ```
-vercel.json déclenche /api/cron/daily-reminder (jours ouvrés, 8h)
-et /api/cron/weekly-reminder (vendredi 15h)
+cron-job.org (service externe gratuit, pas de Vercel Cron — coût) déclenche en HTTP
+/api/cron/daily-reminder (jours ouvrés, 8h) et /api/cron/weekly-reminder (vendredi 15h)
         ↓
 Vérification du header Authorization contre CRON_SECRET
         ↓
@@ -336,7 +336,7 @@ PushSubscription créée, User.notificationConsent = ACCEPTED
 Si refusée (navigateur ou bandeau "Plus tard") → User.notificationConsent = DECLINED
 ```
 
-### Rappel de Réunion de Comité (Vercel Cron)
+### Rappel de Réunion de Comité (cron-job.org)
 
 ```
 /api/cron/meeting-reminder déclenché (ex. toutes les heures)

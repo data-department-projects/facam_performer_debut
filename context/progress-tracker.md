@@ -18,7 +18,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 - [x] 01 Page d'accueil & Connexion — UI (`app/login`, `components/auth/LoginForm.tsx`, `components/layout/Sidebar.tsx`, `TopBar.tsx`)
 - [x] 02 Authentification (email + mot de passe, réinitialisation par OTP) — Logique (`lib/auth.ts`, `actions/auth.ts`, `middleware.ts`, `/api/auth/[...nextauth]`)
-- [x] 03 Service d'emails transactionnels (Resend) — Logique (`lib/email.ts`, 5 templates, 3 routes cron, `vercel.json`)
+- [x] 03 Service d'emails transactionnels (Resend) — Logique (`lib/email.ts`, 5 templates, 4 routes cron déclenchées via cron-job.org — `vercel.json` volontairement vide, voir Décisions)
 - [x] 04 Schéma de base de données — PostgreSQL (`prisma/schema.prisma` — 23 tables, enums, index — migration exécutée 2026-06-17)
 - [x] 05 Stockage S3 & Permissions de base — Logique (`lib/s3-client.ts`, `lib/permissions.ts`)
 - [x] 06 Préférences de Notifications & Infrastructure Push — UI & Logique (`public/sw.js`, `lib/push-client.ts`, `lib/web-push.ts`, `lib/notify.ts`, `/api/push/*`, `NotificationPermissionPrompt.tsx`)
@@ -102,6 +102,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - **Réinitialisation de mot de passe par OTP** (code à 6 chiffres, expiration 10 minutes, usage unique) remplace le lien envoyé par email — `PasswordResetToken` renommé `PasswordResetOtp`. Toute nouvelle demande invalide les codes précédents non utilisés du même utilisateur.
 - **Création d'utilisateur par l'Admin** : bouton "Générer un mot de passe aléatoire" (côté navigateur, `crypto.getRandomValues`) et bouton "Envoyer les identifiants" sur le même formulaire — ce dernier hash et persiste le mot de passe courant puis envoie le template "credentials" par email, garantissant que l'email envoyé correspond toujours au mot de passe réellement stocké. Le mot de passe en clair ne transite jamais ailleurs que dans cette requête.
 - **Templates "otp-reset" et "credentials"** fournis par le client, toujours envoyés via Resend (email) — jamais via le canal push, quel que soit le consentement notification de l'utilisateur concerné (ce sont des messages de sécurité).
+- **Vercel Cron abandonné au profit de cron-job.org (2026-07-08)**, décision client pour raison de coût (Vercel Cron nécessite un plan payant au-delà de 2 jobs/jour sur le plan Hobby). `vercel.json` reste volontairement vide — les 4 routes `app/api/cron/*` (`daily-reminder`, `weekly-reminder`, `weekly-planner-reminder`, `meeting-reminder`) sont déclenchées en HTTP par des jobs configurés manuellement sur cron-job.org, avec le même header `Authorization: Bearer CRON_SECRET` que prévu initialement. Ne jamais réintroduire de bloc `crons` dans `vercel.json` sans revalider ce choix avec le client.
 
 ---
 

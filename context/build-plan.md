@@ -32,7 +32,7 @@ Hypothèse structurante : le système gère une seule entité (FACAM STAIRWAY), 
 **Logique :**
 - Client Resend configuré (lib/email.ts)
 - Templates fournis par le client intégrés : réinitialisation par OTP ("otp-reset"), envoi des identifiants à la création de compte ("credentials")
-- Job planifié (Vercel Cron) — rappel quotidien aux collaborateurs n'ayant pas mis à jour leurs tâches du jour
+- Job planifié (cron-job.org, pas Vercel Cron — coût) — rappel quotidien aux collaborateurs n'ayant pas mis à jour leurs tâches du jour
 - Job planifié — rappel hebdomadaire le vendredi à 15h pour la validation du Week Planner de la semaine suivante
 
 ### 04 Schéma de base de données — PostgreSQL
