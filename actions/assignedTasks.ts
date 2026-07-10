@@ -4,23 +4,38 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/permissions";
 import { createAssignedTaskSchema, updateAssignedTaskSchema } from "@/lib/schemas/assignedTask";
+import type { Role } from "@/app/generated/prisma/client";
 
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string };
 
-async function assigneesOutsideManagerDepartment(
+// Manager → collaborateurs/stagiaires de son propre département (portée limitée).
+// Admin → managers actifs de n'importe quel département (l'Admin supervise tout, jamais
+// destinataire lui-même — l'attribution ne s'adresse ici qu'aux managers).
+async function assigneesOutsideScope(
   assigneeIds: string[],
-  managerDepartmentId: string | null | undefined,
+  creator: { role: Role; departmentId: string | null | undefined },
 ): Promise<string | null> {
   if (assigneeIds.length === 0) return null;
-  if (!managerDepartmentId) {
+
+  if (creator.role === "ADMIN") {
+    const count = await prisma.user.count({
+      where: { id: { in: assigneeIds }, role: "MANAGER", isActive: true },
+    });
+    if (count !== assigneeIds.length) {
+      return "Vous ne pouvez attribuer une tâche qu'à des managers actifs.";
+    }
+    return null;
+  }
+
+  if (!creator.departmentId) {
     return "Vous devez appartenir à un département pour assigner une tâche.";
   }
   const count = await prisma.user.count({
     where: {
       id: { in: assigneeIds },
-      departmentId: managerDepartmentId,
+      departmentId: creator.departmentId,
       role: { in: ["COLLABORATOR", "INTERN"] },
       isActive: true,
     },
@@ -35,16 +50,13 @@ export async function createAssignedTask(
   rawData: unknown,
 ): Promise<{ success: boolean; data?: { id: string }; error?: string }> {
   try {
-    const currentUser = await requireRole(["MANAGER"]);
+    const currentUser = await requireRole(["MANAGER", "ADMIN"]);
     const parsed = createAssignedTaskSchema.safeParse(rawData);
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0].message };
     }
 
-    const scopeError = await assigneesOutsideManagerDepartment(
-      parsed.data.assigneeIds,
-      currentUser.departmentId,
-    );
+    const scopeError = await assigneesOutsideScope(parsed.data.assigneeIds, currentUser);
     if (scopeError) return { success: false, error: scopeError };
 
     const task = await prisma.assignedTask.create({
@@ -67,7 +79,7 @@ export async function createAssignedTask(
 
 export async function updateAssignedTask(id: string, rawData: unknown): Promise<ActionResult> {
   try {
-    const currentUser = await requireRole(["MANAGER"]);
+    const currentUser = await requireRole(["MANAGER", "ADMIN"]);
     const parsed = updateAssignedTaskSchema.safeParse(rawData);
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0].message };
@@ -82,10 +94,7 @@ export async function updateAssignedTask(id: string, rawData: unknown): Promise<
       return { success: false, error: "Accès non autorisé." };
     }
 
-    const scopeError = await assigneesOutsideManagerDepartment(
-      parsed.data.assigneeIds,
-      currentUser.departmentId,
-    );
+    const scopeError = await assigneesOutsideScope(parsed.data.assigneeIds, currentUser);
     if (scopeError) return { success: false, error: scopeError };
 
     await prisma.$transaction(async (tx) => {
@@ -111,7 +120,7 @@ export async function updateAssignedTask(id: string, rawData: unknown): Promise<
 
 export async function deleteAssignedTask(id: string): Promise<ActionResult> {
   try {
-    const currentUser = await requireRole(["MANAGER"]);
+    const currentUser = await requireRole(["MANAGER", "ADMIN"]);
 
     const existing = await prisma.assignedTask.findUnique({
       where: { id },

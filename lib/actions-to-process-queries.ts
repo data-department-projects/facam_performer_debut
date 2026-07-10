@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getTodayUtc } from "@/lib/overdue";
+import { departmentMemberWhere } from "@/lib/permissions";
 import type { ActionsToProcessData } from "@/components/actions-to-process/types";
 import type { Role } from "@/app/generated/prisma/client";
 
@@ -7,7 +8,6 @@ import type { Role } from "@/app/generated/prisma/client";
 // et, pour un Manager, qu'il appartient bien à un département avant d'appeler.
 export async function getActionsToProcessData(
   role: "ADMIN" | "MANAGER",
-  userId: string,
   departmentId: string | null | undefined,
 ): Promise<ActionsToProcessData> {
   const today = getTodayUtc();
@@ -25,7 +25,7 @@ export async function getActionsToProcessData(
       where: {
         status: "SUBMITTED",
         ...(role === "MANAGER"
-          ? { user: { team: { managerId: userId } } }
+          ? { user: departmentMemberWhere(departmentId) }
           : { user: { role: "MANAGER" as Role } }),
       },
       include: {

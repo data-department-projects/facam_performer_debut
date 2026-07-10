@@ -264,7 +264,7 @@ export async function requireRole(allowed: Role[]) {
 
 - `requireRole()` est systématiquement appelé en première ligne de toute Server Action ou Route Handler touchant à une donnée sensible
 - La matrice Modules × Rôles du cahier des charges est la seule source de vérité — toute extension explicitement validée par le client (ex. accès en lecture du Collaborateur aux Comités dont il est membre, mise à jour de ses propres tâches Gantt) doit être documentée dans architecture.md avant d'être codée
-- Le filtrage "Manager → selon périmètre" se fait toujours via la hiérarchie département → sous-département → équipe, jamais par une liste codée en dur
+- Le filtrage "Manager → selon périmètre" se fait via `User.departmentId` (un seul Manager actif par département, cf. Décisions dans `progress-tracker.md`) — **et non plus** via la hiérarchie `Team`/`SubDepartment` (2026-07-10) : `Team` reste un modèle valide dans le schéma mais n'est peuplé par aucun flux réel de l'application ; tout filtrage Manager qui s'appuie encore dessus est un bug, pas une fonctionnalité. Utiliser `departmentMemberWhere()`/`activeDepartmentMembersWhere()` (`lib/permissions.ts`) plutôt que de recoder ce filtre à la main.
 - Un Collaborateur ne peut jamais modifier un enregistrement qu'il ne possède pas directement (sa propre tâche Gantt assignée, son propre Week Planner, ses propres objectifs) — toute exception à cette règle doit être un cas explicitement documenté, jamais une supposition
 - Aucun composant ne décide seul de l'affichage selon le rôle sans passer par un helper centralisé (`hasPermission()` côté client, miroir de `requireRole()` côté serveur)
 

@@ -195,9 +195,10 @@ export default async function ProjectsPage() {
     })),
   }));
 
-  // Tâches indépendantes (tab 3, Manager uniquement) — hors de tout projet
+  // Tâches indépendantes (tab 3) — celles que je crée : Manager pour ses collaborateurs,
+  // Admin pour les managers de n'importe quel département
   let assignedTasksSection;
-  if (role === "MANAGER") {
+  if (role === "MANAGER" || role === "ADMIN") {
     const [assignedTasksRaw, eligibleAssignees] = await Promise.all([
       prisma.assignedTask.findMany({
         where: { createdByUserId: userId },
@@ -209,15 +210,21 @@ export default async function ProjectsPage() {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.user.findMany({
-        where: {
-          departmentId: session.user.departmentId ?? "__none__",
-          role: { in: ["COLLABORATOR", "INTERN"] },
-          isActive: true,
-        },
-        select: { id: true, fullName: true },
-        orderBy: { fullName: "asc" },
-      }),
+      role === "ADMIN"
+        ? prisma.user.findMany({
+            where: { role: "MANAGER", isActive: true },
+            select: { id: true, fullName: true },
+            orderBy: { fullName: "asc" },
+          })
+        : prisma.user.findMany({
+            where: {
+              departmentId: session.user.departmentId ?? "__none__",
+              role: { in: ["COLLABORATOR", "INTERN"] },
+              isActive: true,
+            },
+            select: { id: true, fullName: true },
+            orderBy: { fullName: "asc" },
+          }),
     ]);
 
     assignedTasksSection = {
@@ -229,6 +236,37 @@ export default async function ProjectsPage() {
       })),
       eligibleAssignees,
     };
+  }
+
+  // Tâches qui me sont assignées — Manager uniquement, l'Admin n'est jamais destinataire
+  let myAssignedTasks: MyAssignedTask[] | undefined;
+  if (role === "MANAGER") {
+    const myAssignedTasksRaw = await prisma.assignedTaskAssignee.findMany({
+      where: { userId },
+      select: {
+        assignedTask: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            createdBy: { select: { fullName: true } },
+            weekPlannerTasks: {
+              where: { weekPlanner: { userId, weekStartDate: getCurrentWeekMondayUTC() } },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
+      },
+      orderBy: { assignedTask: { createdAt: "desc" } },
+    });
+    myAssignedTasks = myAssignedTasksRaw.map((a) => ({
+      id: a.assignedTask.id,
+      title: a.assignedTask.title,
+      description: a.assignedTask.description,
+      createdByName: a.assignedTask.createdBy.fullName,
+      alreadyAddedThisWeek: a.assignedTask.weekPlannerTasks.length > 0,
+    }));
   }
 
   const personalTasks: MyPersonalTask[] = await prisma.personalTask.findMany({
@@ -244,6 +282,8 @@ export default async function ProjectsPage() {
         myProjects={myProjects}
         personalTasks={personalTasks}
         assignedTasksSection={assignedTasksSection}
+        myAssignedTasks={myAssignedTasks}
+        isAdmin={role === "ADMIN"}
       />
     </AppShell>
   );

@@ -62,45 +62,55 @@ export function MyPersonalTasksSection({ tasks }: Readonly<Props>) {
           <p className="text-sm text-gray400">Aucune tâche personnelle créée pour le moment.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              className="flex flex-col gap-2.5 rounded-xl border border-gray200 bg-facamWhite p-4 shadow-sm"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-facamDark">{task.title}</p>
-                <div className="flex shrink-0 gap-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setModal({
-                        open: true,
-                        task: { id: task.id, title: task.title, description: task.description },
-                      })
-                    }
-                    className="rounded p-1 text-gray400 hover:bg-gray50 hover:text-facamBlue"
-                    aria-label="Modifier"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => handleDelete(task.id)}
-                    className="rounded p-1 text-gray400 hover:bg-gray50 hover:text-error disabled:cursor-not-allowed disabled:opacity-30"
-                    aria-label="Supprimer"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {task.description && (
-                <p className="text-xs text-gray500 line-clamp-2">{task.description}</p>
-              )}
-            </div>
-          ))}
+        <div className="overflow-hidden rounded-xl border border-gray200 bg-facamWhite shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px]">
+              <thead>
+                <tr className="border-b border-gray200">
+                  <th className="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-widest text-gray500">Tâche</th>
+                  <th className="px-5 py-3 text-right text-[10px] font-medium uppercase tracking-widest text-gray500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((task) => (
+                  <tr key={task.id} className="border-b border-gray200 last:border-0 hover:bg-gray50 transition-colors">
+                    <td className="px-5 py-3">
+                      <p className="text-sm font-medium text-facamDark">{task.title}</p>
+                      {task.description && (
+                        <p className="mt-0.5 text-xs text-gray500 line-clamp-1">{task.description}</p>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex shrink-0 justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setModal({
+                              open: true,
+                              task: { id: task.id, title: task.title, description: task.description },
+                            })
+                          }
+                          className="rounded p-1 text-gray400 hover:bg-gray50 hover:text-facamBlue"
+                          aria-label="Modifier"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => handleDelete(task.id)}
+                          className="rounded p-1 text-gray400 hover:bg-gray50 hover:text-error disabled:cursor-not-allowed disabled:opacity-30"
+                          aria-label="Supprimer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

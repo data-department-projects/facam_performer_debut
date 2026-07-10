@@ -171,7 +171,11 @@ export async function setTaskOfTheDay(
 ): Promise<ActionResult<{ weekPlannerTaskId: string }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Non authentifié" };
-  if (session.user.role !== "COLLABORATOR" && session.user.role !== "INTERN") {
+  if (
+    session.user.role !== "COLLABORATOR" &&
+    session.user.role !== "INTERN" &&
+    session.user.role !== "MANAGER"
+  ) {
     return { success: false, error: "Accès non autorisé" };
   }
 

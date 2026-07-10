@@ -4,7 +4,18 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole, getCurrentUser } from "@/lib/permissions";
 import type { Role } from "@/app/generated/prisma/client";
-import { projectSchema, projectExpenseSchema, milestoneSchema, type ProjectInput } from "@/lib/schemas/project";
+import { projectSchema, projectCreateSchema, projectExpenseSchema, milestoneSchema, type ProjectInput } from "@/lib/schemas/project";
+
+// Un nom de projet ne doit jamais être partagé par deux projets (comparaison insensible
+// à la casse — le nom est déjà trimé par projectSchema). Utilisé à la création et à la
+// modification.
+async function assertProjectNameAvailable(name: string, excludeId?: string): Promise<string | null> {
+  const existing = await prisma.project.findFirst({
+    where: { name: { equals: name, mode: "insensitive" }, ...(excludeId ? { id: { not: excludeId } } : {}) },
+    select: { id: true },
+  });
+  return existing ? "Un projet porte déjà ce nom. Choisissez un nom différent." : null;
+}
 
 export async function createProject(
   rawData: unknown,
@@ -12,12 +23,15 @@ export async function createProject(
   try {
     const currentUser = await requireRole(["ADMIN", "MANAGER"]);
 
-    const parsed = projectSchema.safeParse(rawData);
+    const parsed = projectCreateSchema.safeParse(rawData);
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0].message };
     }
 
     const input: ProjectInput = parsed.data;
+
+    const nameError = await assertProjectNameAvailable(input.name);
+    if (nameError) return { success: false, error: nameError };
 
     const project = await prisma.$transaction(async (tx) => {
       const year = new Date().getFullYear();
@@ -266,6 +280,9 @@ export async function updateProject(
     }
 
     const input = parsed.data;
+
+    const nameError = await assertProjectNameAvailable(input.name, projectId);
+    if (nameError) return { success: false, error: nameError };
 
     await prisma.$transaction(async (tx) => {
       await tx.project.update({

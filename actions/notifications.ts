@@ -72,7 +72,7 @@ export async function getMyOutstandingItems(): Promise<OutstandingItems> {
 
   let toValidate: OutstandingItem[] = [];
   if ((role === "ADMIN" || role === "MANAGER") && !(role === "MANAGER" && !departmentId)) {
-    const data = await getActionsToProcessData(role, userId, departmentId);
+    const data = await getActionsToProcessData(role, departmentId);
     toValidate = [
       ...data.pendingProjects.map((p) => ({
         id: `project-${p.id}`,
@@ -84,6 +84,12 @@ export async function getMyOutstandingItems(): Promise<OutstandingItems> {
         id: `planner-${wp.id}`,
         title: wp.collaboratorName,
         subtitle: "Planning de semaine à valider",
+        href: "/actions-to-process",
+      })),
+      ...data.overdueActions.map((a) => ({
+        id: `committee-action-${a.id}`,
+        title: a.title,
+        subtitle: `Comité ${a.committeeName} — en retard`,
         href: "/actions-to-process",
       })),
     ];
