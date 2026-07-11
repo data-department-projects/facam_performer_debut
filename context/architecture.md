@@ -365,6 +365,25 @@ actions/ganttTasks.ts → updateMyTaskProgress()
 Vérifie responsibleUserId === session.user.id (sinon refus) — jamais d'édition des dates ou dépendances
 ```
 
+### Tâches Indépendantes (AssignedTask) — création et attribution
+
+Tâches hors de tout projet, créées par un supérieur hiérarchique pour un subordonné direct (`actions/assignedTasks.ts`, `requireRole(["MANAGER", "ADMIN"])`) :
+
+```
+Manager crée une tâche indépendante
+        ↓
+Assignés éligibles = Collaborateurs/Stagiaires actifs de son propre département uniquement
+```
+```
+Admin crée une tâche indépendante (2026-07-10)
+        ↓
+Assignés éligibles = Managers actifs, tous départements confondus (l'Admin supervise tout)
+        ↓
+L'Admin n'est jamais lui-même une cible valide, dans aucun des deux cas
+```
+
+Le Manager consulte ses propres tâches créées via l'onglet "Tâches indépendantes" (`AssignedTasksManagerView.tsx`) et, symétriquement, les tâches qui lui sont attribuées par l'Admin via l'onglet "Tâches qui me sont assignées" (`MyAssignedTasksSection.tsx`, réutilisé de la vue Collaborateur). `setTaskOfTheDay` (`actions/dailyExecution.ts`) accepte COLLABORATOR, INTERN et MANAGER comme destinataires d'une tâche assignée.
+
 ---
 
 ## Database Schema (Prisma)

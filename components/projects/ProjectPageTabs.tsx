@@ -8,8 +8,9 @@ import {
   type ManagerAssignedTask,
 } from "@/components/projects/AssignedTasksManagerView";
 import { MyPersonalTasksSection, type MyPersonalTask } from "@/components/projects/MyPersonalTasksSection";
+import { MyAssignedTasksSection, type MyAssignedTask } from "@/components/projects/MyAssignedTasksSection";
 
-type Tab = "all" | "mine" | "assignedTasks" | "personal";
+type Tab = "all" | "mine" | "assignedTasks" | "myAssigned" | "personal";
 
 type SimpleUser = { id: string; fullName: string };
 
@@ -21,9 +22,11 @@ type Props = {
     tasks: ManagerAssignedTask[];
     eligibleAssignees: SimpleUser[];
   };
+  myAssignedTasks?: MyAssignedTask[];
+  isAdmin?: boolean;
 };
 
-export function ProjectPageTabs({ projects, myProjects, personalTasks, assignedTasksSection }: Readonly<Props>) {
+export function ProjectPageTabs({ projects, myProjects, personalTasks, assignedTasksSection, myAssignedTasks, isAdmin }: Readonly<Props>) {
   const [activeTab, setActiveTab] = useState<Tab>("all");
 
   const totalMyTasks = myProjects.reduce((acc, p) => acc + p.tasks.length, 0);
@@ -33,6 +36,9 @@ export function ProjectPageTabs({ projects, myProjects, personalTasks, assignedT
     { id: "mine", label: "Mes projets & tâches", count: totalMyTasks },
     ...(assignedTasksSection
       ? [{ id: "assignedTasks" as const, label: "Tâches indépendantes", count: assignedTasksSection.tasks.length }]
+      : []),
+    ...(myAssignedTasks
+      ? [{ id: "myAssigned" as const, label: "Tâches qui me sont assignées", count: myAssignedTasks.length }]
       : []),
     { id: "personal", label: "Mes tâches personnelles", count: personalTasks.length },
   ];
@@ -75,7 +81,11 @@ export function ProjectPageTabs({ projects, myProjects, personalTasks, assignedT
         <AssignedTasksManagerView
           tasks={assignedTasksSection.tasks}
           eligibleAssignees={assignedTasksSection.eligibleAssignees}
+          isAdmin={isAdmin}
         />
+      )}
+      {activeTab === "myAssigned" && myAssignedTasks && (
+        <MyAssignedTasksSection tasks={myAssignedTasks} />
       )}
       {activeTab === "personal" && <MyPersonalTasksSection tasks={personalTasks} />}
     </div>

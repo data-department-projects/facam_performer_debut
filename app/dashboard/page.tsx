@@ -109,7 +109,7 @@ export default async function DashboardPage({
         objectiveType: filters.objectiveType,
       },
     }),
-    getDashboardFilterOptions(role, userId),
+    getDashboardFilterOptions(role, departmentId ?? null),
   ]);
 
   return (

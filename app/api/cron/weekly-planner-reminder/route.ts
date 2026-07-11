@@ -15,30 +15,30 @@ export async function GET(req: NextRequest) {
   const diffToMonday = jsDay === 0 ? 1 : 8 - jsDay;
   const nextMonday = new Date(Date.UTC(y, m - 1, d + diffToMonday));
 
-  // Cherche tous les Managers actifs ayant ≥1 Collaborateur de leur équipe
+  // Cherche tous les Managers actifs ayant ≥1 Collaborateur de leur département
   // sans WeekPlanner SUBMITTED ou VALIDATED pour la semaine prochaine
   const managers = await prisma.user.findMany({
     where: { role: "MANAGER", isActive: true },
+    select: { id: true, fullName: true, departmentId: true },
+  });
+
+  // Une seule requête pour tous les départements plutôt qu'une par manager (N+1) —
+  // les membres sont ensuite regroupés par departmentId en mémoire.
+  const allMembers = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      role: { in: ["COLLABORATOR", "INTERN"] },
+      departmentId: { in: managers.map((m) => m.departmentId) },
+    },
     select: {
-      id: true,
-      fullName: true,
-      managedTeams: {
-        select: {
-          members: {
-            where: { isActive: true, role: { in: ["COLLABORATOR", "INTERN"] } },
-            select: {
-              id: true,
-              weekPlanners: {
-                where: {
-                  weekStartDate: nextMonday,
-                  status: { in: ["SUBMITTED", "VALIDATED"] },
-                },
-                select: { id: true },
-                take: 1,
-              },
-            },
-          },
+      departmentId: true,
+      weekPlanners: {
+        where: {
+          weekStartDate: nextMonday,
+          status: { in: ["SUBMITTED", "VALIDATED"] },
         },
+        select: { id: true },
+        take: 1,
       },
     },
   });
@@ -46,8 +46,8 @@ export async function GET(req: NextRequest) {
   let managersNotified = 0;
 
   for (const manager of managers) {
-    const allMembers = manager.managedTeams.flatMap((t) => t.members);
-    const pendingCount = allMembers.filter((m) => m.weekPlanners.length === 0).length;
+    const members = allMembers.filter((m) => m.departmentId === manager.departmentId);
+    const pendingCount = members.filter((m) => m.weekPlanners.length === 0).length;
 
     if (pendingCount === 0) continue;
 

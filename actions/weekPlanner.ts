@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { notifyUser } from "@/lib/notify";
 import { revalidatePath } from "next/cache";
 import {
   createPlannerSchema,
@@ -227,7 +228,14 @@ export async function submitWeekPlanner(
   try {
     const planner = await prisma.weekPlanner.findUnique({
       where: { id: parsed.data.plannerId },
-      select: { userId: true, status: true },
+      select: {
+        userId: true,
+        status: true,
+        weekStartDate: true,
+        weekEndDate: true,
+        _count: { select: { tasks: true } },
+        user: { select: { fullName: true, departmentId: true } },
+      },
     });
 
     if (!planner) return { success: false, error: "Planning introuvable" };
@@ -255,6 +263,43 @@ export async function submitWeekPlanner(
         where: { id: parsed.data.plannerId },
         data: { status: "SUBMITTED" },
       });
+
+      // Notifie le(s) validateur(s) réel(s) du planning — Manager actif du département pour
+      // un Collaborateur/Stagiaire, tous les Admins actifs pour un Manager (validateWeekPlanner
+      // n'autorise que l'Admin à valider le planning d'un Manager, jamais un autre Manager —
+      // sans cette distinction un Manager qui soumet son propre planning se notifierait
+      // lui-même au lieu de l'Admin). Recherche directe par departmentId — ne dépend pas de la
+      // synchronisation de Department.responsableId, qui peut être absente pour des départements
+      // existants. Échec de notification non bloquant — la soumission reste valide.
+      const notifyTargets =
+        session.user.role === "MANAGER"
+          ? await prisma.user.findMany({
+              where: { role: "ADMIN", isActive: true },
+              select: { id: true },
+            })
+          : await prisma.user.findFirst({
+              where: { departmentId: planner.user.departmentId, role: "MANAGER", isActive: true },
+              select: { id: true },
+            }).then((u) => (u ? [u] : []));
+
+      for (const target of notifyTargets) {
+        try {
+          await notifyUser(target.id, {
+            title: "Planning à valider",
+            body: `${planner.user.fullName} a soumis son planning de la semaine.`,
+            url: "/actions-to-process",
+            emailTemplate: "planner-submitted",
+            emailData: {
+              collaboratorName: planner.user.fullName,
+              weekStartDate: planner.weekStartDate.toLocaleDateString("fr-FR"),
+              weekEndDate: planner.weekEndDate.toLocaleDateString("fr-FR"),
+              taskCount: String(planner._count.tasks),
+            },
+          });
+        } catch (notifyError) {
+          console.error("[submitWeekPlanner] notifyUser", notifyError);
+        }
+      }
     }
 
     revalidatePath("/week-planner");
