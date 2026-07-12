@@ -10,7 +10,7 @@ export default async function ActionsToProcessPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const { role, id: userId, departmentId } = session.user;
+  const { role, departmentId } = session.user;
 
   if (role !== "ADMIN" && role !== "MANAGER") redirect("/dashboard");
 
@@ -19,7 +19,7 @@ export default async function ActionsToProcessPage() {
   // le filtre département et retournerait toutes les actions de l'organisation)
   if (role === "MANAGER" && !departmentId) redirect("/dashboard");
 
-  const data = await getActionsToProcessData(role, userId, departmentId);
+  const data = await getActionsToProcessData(role, departmentId);
 
   return (
     <AppShell pageTitle="Actions à traiter">

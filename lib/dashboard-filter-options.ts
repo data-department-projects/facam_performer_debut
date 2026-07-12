@@ -1,10 +1,11 @@
 import type { Role } from "@/app/generated/prisma/client";
 import type { DashboardFilterOptions } from "@/components/dashboard/types";
 import { prisma } from "@/lib/prisma";
+import { activeDepartmentMembersWhere } from "@/lib/permissions";
 
 export async function getDashboardFilterOptions(
   role: Role,
-  userId: string,
+  departmentId: string | null,
 ): Promise<DashboardFilterOptions> {
   if (role === "ADMIN") {
     const departments = await prisma.department.findMany({
@@ -20,11 +21,7 @@ export async function getDashboardFilterOptions(
 
   if (role === "MANAGER") {
     const members = await prisma.user.findMany({
-      where: {
-        isActive: true,
-        role: { in: ["COLLABORATOR", "INTERN"] },
-        team: { managerId: userId },
-      },
+      where: activeDepartmentMembersWhere(departmentId),
       select: { id: true, fullName: true },
       orderBy: { fullName: "asc" },
     });

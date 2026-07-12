@@ -4,6 +4,7 @@ import { renderCredentialsTemplate } from "@/lib/email-templates/credentials";
 import { renderWeeklyReminderTemplate } from "@/lib/email-templates/weekly-reminder";
 import { renderMeetingReminderTemplate } from "@/lib/email-templates/meeting-reminder";
 import { renderOverdueTaskReminderTemplate } from "@/lib/email-templates/overdue-task-reminder";
+import { renderPlannerSubmittedTemplate } from "@/lib/email-templates/planner-submitted";
 
 function getResendClient() {
   const key = process.env.RESEND_API_KEY;
@@ -19,6 +20,7 @@ export type EmailTemplate =
   | "weekly-reminder"
   | "meeting-reminder"
   | "overdue-task-reminder"
+  | "planner-submitted"
   | "bug-report";
 
 function subjectFor(template: EmailTemplate): string {
@@ -33,6 +35,8 @@ function subjectFor(template: EmailTemplate): string {
       return "Rappel de réunion demain — FACAM PERFORMER";
     case "overdue-task-reminder":
       return "Échéance dépassée — FACAM PERFORMER";
+    case "planner-submitted":
+      return "Planning à valider — FACAM PERFORMER";
     case "bug-report":
       return "Nouveau bug signalé — FACAM PERFORMER";
   }
@@ -74,6 +78,14 @@ function renderTemplate(
         context: data.context ?? "",
         overdueDays: data.overdueDays ?? "0",
         link: data.link ?? (process.env.NEXTAUTH_URL ?? ""),
+      });
+    case "planner-submitted":
+      return renderPlannerSubmittedTemplate({
+        name: data.name ?? "",
+        collaboratorName: data.collaboratorName ?? "",
+        weekStartDate: data.weekStartDate ?? "",
+        weekEndDate: data.weekEndDate ?? "",
+        taskCount: data.taskCount ?? "0",
       });
     case "bug-report":
       return `<!DOCTYPE html><html><body style="font-family:sans-serif;color:#1a1a1a;padding:24px">

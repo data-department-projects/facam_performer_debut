@@ -19,6 +19,7 @@ import type {
 } from "@/components/dashboard/types";
 import { prisma } from "@/lib/prisma";
 import { FREQUENCY_LABELS } from "@/lib/committee-frequency";
+import { departmentMemberWhere, activeDepartmentMembersWhere } from "@/lib/permissions";
 
 // Alias interne — sous-ensemble des filtres UI qui affectent les requêtes DB
 type ActiveFilters = Omit<DashboardActiveFilters, "period">;
@@ -256,11 +257,11 @@ function getWeekPlannerScope(
       : {};
   }
   if (ctx.role === "MANAGER") {
-    const base = { user: { team: { managerId: ctx.userId } } };
+    const teamWhere = departmentMemberWhere(ctx.departmentId);
     if (filters?.memberId) {
-      return { userId: filters.memberId, user: { team: { managerId: ctx.userId } } };
+      return { userId: filters.memberId, user: teamWhere };
     }
-    return base;
+    return { user: teamWhere };
   }
   return { userId: ctx.userId };
 }
@@ -437,7 +438,7 @@ export async function countActionsToProcess(ctx: DashboardContext): Promise<numb
   if (ctx.role === "MANAGER") {
     const [submittedPlanners, overdueActions] = await Promise.all([
       prisma.weekPlanner.count({
-        where: { status: "SUBMITTED", user: { team: { managerId: ctx.userId } } },
+        where: { status: "SUBMITTED", user: departmentMemberWhere(ctx.departmentId) },
       }),
       prisma.committeeAction.count({
         where: { status: "PENDING", dueDate: { lt: today }, ...getCommitteeActionScope(ctx) },
@@ -554,15 +555,14 @@ async function getAdminActiveProjectsTable(
 }
 
 async function getManagerTeamRows(
-  userId: string,
+  departmentId: string | null,
   memberId?: string | null,
 ): Promise<ManagerTeamRow[]> {
   const weekRange = getPeriodRange("week");
+  if (!departmentId) return [];
   const collaborators = await prisma.user.findMany({
     where: {
-      isActive: true,
-      role: "COLLABORATOR",
-      team: { managerId: userId },
+      ...activeDepartmentMembersWhere(departmentId),
       ...(memberId ? { id: memberId } : {}),
     },
     select: {
@@ -945,8 +945,13 @@ async function fetchAdminAlerts(today: Date): Promise<AlertItem[]> {
 }
 
 async function fetchManagerPlannerAlerts(ctx: DashboardContext): Promise<AlertItem[]> {
+  if (!ctx.departmentId) return [];
   const count = await prisma.weekPlanner.count({
-    where: { status: "DRAFT", weekStartDate: getCurrentWeekMonday(), user: { team: { managerId: ctx.userId } } },
+    where: {
+      status: "DRAFT",
+      weekStartDate: getCurrentWeekMonday(),
+      user: departmentMemberWhere(ctx.departmentId),
+    },
   });
   if (count === 0) return [];
   return [{
@@ -1147,17 +1152,16 @@ async function getUpcomingMilestones(
 }
 
 async function getManagerTodayView(
-  userId: string,
+  departmentId: string | null,
   memberId?: string | null,
 ): Promise<TodayTeamMemberRow[]> {
+  if (!departmentId) return [];
   const monday = getCurrentWeekMonday();
   const todayDay = todayDayEnum();
 
   const collaborators = await prisma.user.findMany({
     where: {
-      isActive: true,
-      role: "COLLABORATOR",
-      team: { managerId: userId },
+      ...activeDepartmentMembersWhere(departmentId),
       ...(memberId ? { id: memberId } : {}),
     },
     select: {
@@ -1380,11 +1384,11 @@ async function getManagerDashboardData(
     getProjectProgressRows(ctx, filters),
     getCommitteeCompletionRate(ctx, range, filters),
     countActionsToProcess(ctx),
-    getManagerTeamRows(ctx.userId, filters.memberId),
+    getManagerTeamRows(ctx.departmentId, filters.memberId),
     getRecentActivity(ctx, range, filters),
     getSmartAlerts(ctx, filters),
     getUpcomingMilestones(ctx, filters),
-    getManagerTodayView(ctx.userId, filters.memberId),
+    getManagerTodayView(ctx.departmentId, filters.memberId),
     getTaskDoneRate(ctx, prevRange, filters),
   ]);
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useWatch, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2, ChevronRight } from "lucide-react";
-import { projectSchema, PROJECT_MEMBER_ROLES, type ProjectInput } from "@/lib/schemas/project";
+import { projectSchema, projectCreateSchema, PROJECT_MEMBER_ROLES, type ProjectInput } from "@/lib/schemas/project";
 import { createProject, updateProject } from "@/actions/projects";
 
 type Tab = 1 | 2 | 3 | 4 | 5;
@@ -107,7 +107,7 @@ export function ProjectForm({ users, departments, projectId, defaultValues, onSu
     setError,
     formState: { errors, isSubmitting },
   } = useForm<ProjectInput>({
-    resolver: zodResolver(projectSchema) as unknown as Resolver<ProjectInput>,
+    resolver: zodResolver(projectId ? projectSchema : projectCreateSchema) as unknown as Resolver<ProjectInput>,
     defaultValues: defaultValues ?? {
       beneficiaryType: "INTERNAL",
       teamMembers: [],
@@ -422,9 +422,10 @@ export function ProjectForm({ users, departments, projectId, defaultValues, onSu
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
-                  <Label>Périmètre inclus</Label>
+                  <Label required={!projectId}>Périmètre inclus</Label>
                   <Textarea
                     placeholder="Ce qui est dans le périmètre du projet..."
+                    error={errors.scopeIncluded?.message}
                     {...register("scopeIncluded")}
                   />
                 </div>
@@ -441,7 +442,7 @@ export function ProjectForm({ users, departments, projectId, defaultValues, onSu
               {/* Livrables */}
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <Label>Livrables attendus</Label>
+                  <Label required={!projectId}>Livrables attendus</Label>
                   <button
                     type="button"
                     onClick={() => appendDeliverable({ value: "" })}
@@ -451,6 +452,9 @@ export function ProjectForm({ users, departments, projectId, defaultValues, onSu
                     Ajouter
                   </button>
                 </div>
+                {errors.expectedDeliverables?.message && (
+                  <span className="text-xs text-error">{errors.expectedDeliverables.message}</span>
+                )}
                 {deliverableFields.map((field, index) => (
                   <div key={field.id} className="flex items-center gap-2">
                     <Input
@@ -468,7 +472,7 @@ export function ProjectForm({ users, departments, projectId, defaultValues, onSu
               {/* Critères de succès */}
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <Label>Critères de succès</Label>
+                  <Label required={!projectId}>Critères de succès</Label>
                   <button
                     type="button"
                     onClick={() => appendCriteria({ value: "" })}
@@ -478,6 +482,9 @@ export function ProjectForm({ users, departments, projectId, defaultValues, onSu
                     Ajouter
                   </button>
                 </div>
+                {errors.successCriteria?.message && (
+                  <span className="text-xs text-error">{errors.successCriteria.message}</span>
+                )}
                 {criteriaFields.map((field, index) => (
                   <div key={field.id} className="flex items-center gap-2">
                     <Input
@@ -533,26 +540,31 @@ export function ProjectForm({ users, departments, projectId, defaultValues, onSu
             ← Section précédente
           </button>
 
-          {activeTab < 5 ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab((prev) => Math.min(5, prev + 1) as Tab)}
-              className="inline-flex items-center gap-2 rounded-md bg-facamBlue px-4 py-2 text-sm font-semibold text-facamWhite hover:bg-facamDark transition-colors"
-            >
-              Section suivante
-              <ChevronRight size={16} />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-2 rounded-md bg-facamYellow px-5 py-2 text-sm font-semibold text-facamDark transition-colors hover:brightness-105 disabled:opacity-60"
-            >
-              {isSubmitting
-              ? (projectId ? "Enregistrement…" : "Création en cours…")
-              : (projectId ? "Enregistrer les modifications" : "Créer le projet")}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {activeTab < 5 && (
+              <button
+                type="button"
+                onClick={() => setActiveTab((prev) => Math.min(5, prev + 1) as Tab)}
+                className="inline-flex items-center gap-2 rounded-md bg-facamBlue px-4 py-2 text-sm font-semibold text-facamWhite hover:bg-facamDark transition-colors"
+              >
+                Section suivante
+                <ChevronRight size={16} />
+              </button>
+            )}
+            {/* En modification, l'enregistrement est possible depuis n'importe quel onglet —
+                pas besoin de parcourir les 5 sections. En création, uniquement à la dernière. */}
+            {(projectId || activeTab === 5) && (
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 rounded-md bg-facamYellow px-5 py-2 text-sm font-semibold text-facamDark transition-colors hover:brightness-105 disabled:opacity-60"
+              >
+                {isSubmitting
+                ? (projectId ? "Enregistrement…" : "Création en cours…")
+                : (projectId ? "Enregistrer les modifications" : "Créer le projet")}
+              </button>
+            )}
+          </div>
         </div>
       </form>
     </div>

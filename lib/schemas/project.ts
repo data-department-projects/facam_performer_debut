@@ -14,7 +14,7 @@ export type ProjectMemberRole = (typeof PROJECT_MEMBER_ROLES)[number];
 export const projectSchema = z
   .object({
     // 1 — Identité
-    name: z.string().min(3, "Le nom du projet est requis (min. 3 caractères)"),
+    name: z.string().trim().min(3, "Le nom du projet est requis (min. 3 caractères)"),
     description: z.string().min(10, "La description est requise (min. 10 caractères)"),
     category: z.enum(
       ["RESEARCH_DEVELOPMENT", "INFRASTRUCTURE", "CLIENT", "INTERNAL_TRANSFORMATION", "MARKETING", "OTHER"],
@@ -69,6 +69,23 @@ export const projectSchema = z
   );
 
 export type ProjectInput = z.infer<typeof projectSchema>;
+
+// À la création uniquement — les Spécifications & Livrables deviennent obligatoires pour
+// éviter les projets créés sans contenu technique (en modification, projectSchema seul
+// s'applique : l'enregistrement doit rester possible à tout moment, onglet par onglet).
+export const projectCreateSchema = projectSchema
+  .refine((data) => data.scopeIncluded.trim().length > 0, {
+    message: "Le périmètre inclus est requis à la création du projet",
+    path: ["scopeIncluded"],
+  })
+  .refine((data) => data.expectedDeliverables.length > 0, {
+    message: "Au moins un livrable attendu est requis à la création du projet",
+    path: ["expectedDeliverables"],
+  })
+  .refine((data) => data.successCriteria.length > 0, {
+    message: "Au moins un critère de succès est requis à la création du projet",
+    path: ["successCriteria"],
+  });
 
 export const PROJECT_EXPENSE_TYPES = [
   { value: "ONE_TIME", label: "Unique" },

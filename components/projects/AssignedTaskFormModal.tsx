@@ -17,10 +17,17 @@ type Props = {
   open: boolean;
   task?: EditableAssignedTask;
   eligibleAssignees: SimpleUser[];
+  emptyAssigneesMessage?: string;
   onClose: () => void;
 };
 
-export function AssignedTaskFormModal({ open, task, eligibleAssignees, onClose }: Readonly<Props>) {
+export function AssignedTaskFormModal({
+  open,
+  task,
+  eligibleAssignees,
+  emptyAssigneesMessage = "Aucun collaborateur actif dans votre département.",
+  onClose,
+}: Readonly<Props>) {
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
 
   useEffect(() => {
@@ -66,9 +73,7 @@ export function AssignedTaskFormModal({ open, task, eligibleAssignees, onClose }
             Attribuer à <span className="font-normal text-gray400">(optionnel)</span>
           </p>
           {eligibleAssignees.length === 0 ? (
-            <p className="text-xs text-gray400">
-              Aucun collaborateur actif dans votre département.
-            </p>
+            <p className="text-xs text-gray400">{emptyAssigneesMessage}</p>
           ) : (
             <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-md border border-gray200 p-2">
               {eligibleAssignees.map((u) => (
